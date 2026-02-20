@@ -5,7 +5,8 @@
 
 [Example video 1](https://www.youtube.com/watch?v=qFOMJrigYo0) <br>
 [Update video 1](https://www.youtube.com/watch?v=pUQSMOLOd9c) <br>
-[Update video 2](https://www.youtube.com/watch?v=ZY527-SltrM)
+[Update video 2](https://www.youtube.com/watch?v=ZY527-SltrM) <br>
+[Update video 3](https://www.youtube.com/watch?v=PtDSXUfajH8) <br>
 
 <img width="1280" height="720" alt="bluel111" src="https://github.com/user-attachments/assets/c17413bf-5ded-4ce3-98f0-129d0a77e44a" />
 
