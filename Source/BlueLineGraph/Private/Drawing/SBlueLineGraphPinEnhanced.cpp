@@ -1,4 +1,4 @@
-// Copyright YourTeamName. All Rights Reserved.
+﻿// Copyright (c) 2026 GregOrigin. All Rights Reserved.
 
 #include "Drawing/SBlueLineGraphPinEnhanced.h"
 #include "Settings/UBlueLineEditorSettings.h"

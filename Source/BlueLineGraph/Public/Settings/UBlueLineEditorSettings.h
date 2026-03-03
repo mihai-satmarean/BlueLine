@@ -1,4 +1,4 @@
-// Copyright YourTeamName. All Rights Reserved.
+﻿// Copyright (c) 2026 GregOrigin. All Rights Reserved.
 
 #pragma once
 
@@ -14,9 +14,12 @@ class BLUELINEGRAPH_API UBlueLineEditorSettings : public UDeveloperSettings
 public:
 	UBlueLineEditorSettings();
 
-	/** Enable the Manhattan-style logic (Stubs and formatting). */
-	UPROPERTY(EditAnywhere, config, Category = "Visuals")
-	bool bEnableManhattanRouting;
+	/** If true, Manhattan routing will be automatically applied to new connections */
+	UPROPERTY(EditAnywhere, Config, Category = "BlueLine|Routing")
+	bool bAutoRouteNewConnections = true;
+
+	UPROPERTY(EditAnywhere, Config, Category = "BlueLine|Routing")
+	bool bEnableManhattanRouting = true;
 
 	/** Length of the straight line extending from the pin. */
 	UPROPERTY(EditAnywhere, config, Category = "Visuals")

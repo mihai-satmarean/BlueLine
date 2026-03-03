@@ -1,4 +1,4 @@
-// Copyright YourTeamName. All Rights Reserved.
+﻿// Copyright (c) 2026 GregOrigin. All Rights Reserved.
 
 using UnrealBuildTool;
 
@@ -7,7 +7,6 @@ public class BlueLineGraph : ModuleRules
     public BlueLineGraph(ReadOnlyTargetRules Target) : base(Target)
     {
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-   //     bUseUnity = false;
 
         PublicDependencyModuleNames.AddRange(
             new string[]

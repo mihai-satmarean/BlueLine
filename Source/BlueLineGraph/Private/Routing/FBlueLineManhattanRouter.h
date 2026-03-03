@@ -1,30 +1,26 @@
-// Copyright YourTeamName. All Rights Reserved.
+﻿// Copyright (c) 2026 GregOrigin. All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
-#include "EdGraph/EdGraphPin.h" // Needed for FEdGraphPinType
+#include "EdGraph/EdGraphPin.h" 
 
 class UEdGraphNode;
 class UEdGraph;
 class UK2Node_Knot;
 
-/**
- * FBlueLineManhattanRouter
- *
- * Inserts Reroute Nodes (Knots) to force wires into orthogonal "Manhattan" shapes.
- */
 class FBlueLineManhattanRouter
 {
 public:
-	/**
-	 * Main Entry Point for Shift+R.
-	 * Analyzes user selection, finds connections between selected nodes,
-	 * and creates Manhattan routes for them via Reroute Nodes.
-	 */
+	// Shift+R Entry Point
 	static void RigidifySelectedConnections();
 
-	/** Configuration for the routing algorithm */
+	// Menu Entry Point (Public)
+	static bool RouteConnection(UEdGraphPin* OutputPin, UEdGraphPin* InputPin, UEdGraph* Graph);
+
+	// Cleanup Entry Point (Public)
+	static int32 CleanupOrphanedRerouteNodes(UEdGraph* Graph);
+
 	struct FConfig
 	{
 		float HorizontalStubLength = 50.0f;
@@ -36,15 +32,9 @@ public:
 	static FConfig Config;
 
 private:
-	// -- Routing Logic --
-	static bool RouteConnection(UEdGraphPin* OutputPin, UEdGraphPin* InputPin, UEdGraph* Graph);
+	// Internal Helpers
 	static void CalculateManhattanPath(const FVector2D& Start, const FVector2D& End, TArray<FVector2D>& OutPoints);
-
-	// -- Helpers --
 	static FVector2D GetPinPos(UEdGraphPin* Pin);
-
-	// Updated Signature: Requires PinType to ensure undo-safe creation
 	static UK2Node_Knot* CreateRerouteNode(UEdGraph* Graph, const FVector2D& Position, const FEdGraphPinType& PinType);
-
 	static void BreakSpecificLink(UEdGraphPin* Output, UEdGraphPin* Input);
 };

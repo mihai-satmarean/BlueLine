@@ -1,4 +1,4 @@
-// Copyright YourTeamName. All Rights Reserved.
+﻿// Copyright (c) 2026 GregOrigin. All Rights Reserved.
 
 #include "Styles/FBlueLineStyle.h"
 #include "Styling/SlateStyleRegistry.h"

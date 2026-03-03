@@ -1,15 +1,19 @@
-// Copyright YourTeamName. All Rights Reserved.
+﻿// Copyright (c) 2026 GregOrigin. All Rights Reserved.
 
 #include "BlueLineGraphModule.h"
-// #include "Formatting/BlueLineRouter.h"
 
 // Visualization Includes
 #include "Drawing/FBlueLineGraphPanelFactory.h"
-#include "Drawing/FBlueLineGraphPinFactory.h" // <--- CRITICAL INCLUDE
+#include "Drawing/FBlueLineGraphPinFactory.h"
 #include "Formatting/BlueLineFormatter.h"
 #include "Styles/FBlueLineStyle.h"
 #include "Settings/UBlueLineEditorSettings.h"
+
+// Routing & UI Includes
 #include "Routing/FBlueLineManhattanRouter.h"
+#include "Routing/FBlueLineConnectionInterceptor.h"
+#include "Formatting/FBlueLineGraphCleaner.h"
+#include "UI/FBlueLineGraphMenuExtender.h" // <--- Valid here
 
 // Framework Includes
 #include "Commands/FBlueLineCommands.h"
@@ -25,18 +29,28 @@ void FBlueLineGraphModule::StartupModule()
 {
 	FBlueLineStyle::Initialize();
 	FBlueLineCommands::Register();
-
 	RegisterCommands();
 
-	// Install Visual Factories
+	// Factories
 	InstallGraphDrawingPolicy();
 	InstallGraphPinFactory();
+
+	// Menu Extension
+	FBlueLineGraphMenuExtender::Register(); // <--- Init Context Menu
+
+	FBlueLineConnectionInterceptor::Enable();
 
 	UE_LOG(LogBlueLineCore, Log, TEXT("BlueLineGraph: Module Started."));
 }
 
 void FBlueLineGraphModule::ShutdownModule()
 {
+	FBlueLineConnectionInterceptor::Disable();
+
+	// Cleanup Menus
+	FBlueLineGraphMenuExtender::Unregister();
+
+	// Cleanup Factories
 	UninstallGraphPinFactory();
 	UninstallGraphDrawingPolicy();
 
@@ -53,16 +67,25 @@ void FBlueLineGraphModule::RegisterCommands()
 {
 	PluginCommands = MakeShareable(new FUICommandList);
 
-	PluginCommands->MapAction(
-        FBlueLineCommands::Get().RigidifyConnections,
-        FExecuteAction::CreateStatic(&FBlueLineManhattanRouter::RigidifySelectedConnections)
-    );
-	
+	// Shift+Q (Format)
 	PluginCommands->MapAction(
 		FBlueLineCommands::Get().AutoFormatSelected,
 		FExecuteAction::CreateStatic(&FBlueLineFormatter::FormatActiveGraphSelection)
 	);
 
+	// Shift+R (Manhattan Router)
+	PluginCommands->MapAction(
+		FBlueLineCommands::Get().RigidifyConnections,
+		FExecuteAction::CreateStatic(&FBlueLineManhattanRouter::RigidifySelectedConnections)
+	);
+
+	// Shift+C (Clean Graph)
+	PluginCommands->MapAction(
+		FBlueLineCommands::Get().CleanGraph,
+		FExecuteAction::CreateStatic(&FBlueLineGraphCleaner::CleanActiveGraph)
+	);
+
+	// F8 Toggle (Optional/Legacy)
 	PluginCommands->MapAction(
 		FBlueLineCommands::Get().ToggleWireStyle,
 		FExecuteAction::CreateLambda([]() {
@@ -83,8 +106,7 @@ void FBlueLineGraphModule::RegisterCommands()
 void FBlueLineGraphModule::InstallGraphDrawingPolicy()
 {
 	if (BlueLineGraphPanelFactory.IsValid()) return;
-
-	// Note: Explicit type <FGraphPanelNodeFactory> helps MakeShareable matching
+	// Use explicit template to satisfy MakeShareable with the struct FGraphPanelNodeFactory
 	BlueLineGraphPanelFactory = MakeShareable<FGraphPanelNodeFactory>(new FBlueLineGraphPanelFactory());
 	FEdGraphUtilities::RegisterVisualNodeFactory(BlueLineGraphPanelFactory);
 }
@@ -101,7 +123,6 @@ void FBlueLineGraphModule::UninstallGraphDrawingPolicy()
 void FBlueLineGraphModule::InstallGraphPinFactory()
 {
 	if (BlueLinePinFactory.IsValid()) return;
-
 	BlueLinePinFactory = MakeShareable(new FBlueLineGraphPinFactory());
 	FEdGraphUtilities::RegisterVisualPinFactory(BlueLinePinFactory);
 }
@@ -116,5 +137,4 @@ void FBlueLineGraphModule::UninstallGraphPinFactory()
 }
 
 #undef LOCTEXT_NAMESPACE
-
 IMPLEMENT_MODULE(FBlueLineGraphModule, BlueLineGraph)

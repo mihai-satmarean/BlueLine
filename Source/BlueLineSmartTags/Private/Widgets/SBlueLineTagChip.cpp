@@ -1,4 +1,4 @@
-// Copyright YourTeamName. All Rights Reserved.
+﻿// Copyright (c) 2026 GregOrigin. All Rights Reserved.
 
 #include "Widgets/SBlueLineTagChip.h"
 #include "Debug/BlueLineDebugLib.h"
@@ -48,11 +48,13 @@ void SBlueLineTagChip::Construct(const FArguments& InArgs)
 	}
 	else
 	{
-		ChildSlot[ChipVisual];
+		ChildSlot
+		[
+			ChipVisual
+		];
 	}
 
 	// FIX: Use modern Attribute binding syntax for visibility
-	// TAttribute<T>::FGetter::CreateSP creates a shared-pointer-safe delegate.
 	SetVisibility(TAttribute<EVisibility>::Create(
 		TAttribute<EVisibility>::FGetter::CreateSP(this, &SBlueLineTagChip::GetChipVisibility)
 	));

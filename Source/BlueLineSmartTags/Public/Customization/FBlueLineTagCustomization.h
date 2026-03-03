@@ -1,12 +1,15 @@
-// Copyright YourTeamName. All Rights Reserved.
+﻿// Copyright (c) 2026 GregOrigin. All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "IPropertyTypeCustomization.h"
 #include "Types/SlateEnums.h"
+#include "Input/Reply.h"
+#include "GameplayTagContainer.h"
 
 class IPropertyHandle;
+class SWidget;
 
 /**
  * FBlueLineTagCustomization
@@ -28,5 +31,11 @@ private:
 	FText GetTagNameFromHandle(TSharedPtr<IPropertyHandle> TagHandle) const;
 	FSlateColor GetColorFromProperty(TSharedPtr<IPropertyHandle> ColorHandle) const;
 
+	FReply OnSuggestTagsClicked();
+	TSharedRef<SWidget> GenerateSuggestionMenu() const;
+	void ApplySuggestion(FGameplayTag Tag, FLinearColor Color) const;
+
 	TSharedPtr<IPropertyHandle> StructPropertyHandle;
+	TSharedPtr<IPropertyHandle> TagHandle;
+	TSharedPtr<IPropertyHandle> ColorHandle;
 };

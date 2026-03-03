@@ -1,14 +1,13 @@
-// Copyright YourTeamName. All Rights Reserved.
+﻿// Copyright (c) 2026 GregOrigin. All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "Modules/ModuleManager.h"
 
-// Forward Declarations
 class FUICommandList;
 struct FGraphPanelNodeFactory;
-class FBlueLineGraphPinFactory; // <--- NEW Forward Declaration
+class FBlueLineGraphPinFactory;
 
 class FBlueLineGraphModule : public IModuleInterface
 {
@@ -17,19 +16,13 @@ public:
 	virtual void ShutdownModule() override;
 
 private:
-	// Panel Factory (Nodes/Connections)
 	void InstallGraphDrawingPolicy();
 	void UninstallGraphDrawingPolicy();
-
-	// Pin Factory (Colored Pins)
-	void InstallGraphPinFactory();   // <--- NEW Declaration
-	void UninstallGraphPinFactory(); // <--- NEW Declaration
-
+	void InstallGraphPinFactory();
+	void UninstallGraphPinFactory();
 	void RegisterCommands();
 
-	// Members
 	TSharedPtr<FGraphPanelNodeFactory> BlueLineGraphPanelFactory;
-	TSharedPtr<FBlueLineGraphPinFactory> BlueLinePinFactory; // <--- NEW Storage
-
+	TSharedPtr<FBlueLineGraphPinFactory> BlueLinePinFactory;
 	TSharedPtr<FUICommandList> PluginCommands;
 };

@@ -1,4 +1,4 @@
-// Copyright YourTeamName. All Rights Reserved.
+﻿// Copyright (c) 2026 GregOrigin. All Rights Reserved.
 
 using UnrealBuildTool;
 
@@ -8,8 +8,6 @@ public class BlueLineCore : ModuleRules
     {
         // Use Shared PCHs for faster compilation
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-
-	//	bUseUnity = false;
 
         PublicDependencyModuleNames.AddRange(
             new string[]

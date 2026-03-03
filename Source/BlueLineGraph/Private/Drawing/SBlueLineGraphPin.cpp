@@ -1,4 +1,4 @@
-// Copyright YourTeamName. All Rights Reserved.
+﻿// Copyright (c) 2026 GregOrigin. All Rights Reserved.
 
 #include "Drawing/SBlueLineGraphPin.h"
 #include "GameplayTagsEditorModule.h"
@@ -99,7 +99,7 @@ FGameplayTag SBlueLineGraphPin::GetTagFromPin() const
 	{
 		// It's likely just "Status.Fire" text. Request it directly.
 		// "false" as second arg prevents error log spam if tag doesn't exist yet
-		NewTag = FGameplayTag::RequestGameplayTag(FName(*DefaultString), false);
+		NewTag = UGameplayTagsManager::Get().RequestGameplayTag(FName(*DefaultString), false);
 	}
 
 	return NewTag;

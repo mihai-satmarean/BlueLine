@@ -1,4 +1,4 @@
-// Copyright YourTeamName. All Rights Reserved.
+﻿// Copyright (c) 2026 GregOrigin. All Rights Reserved.
 
 #pragma once
 
@@ -31,6 +31,11 @@ private:
 	 * Essential for supporting hot-reloading without crashing.
 	 */
 	void UnregisterPropertyTypeCustomizations();
+
+	void RegisterCommands();
+	void ExecuteAutoTagGraph();
+
+	TSharedPtr<class FUICommandList> PluginCommands;
 
 	/** Name of the property name to customize (FGameplayTag) */
 	FName GameplayTagName;

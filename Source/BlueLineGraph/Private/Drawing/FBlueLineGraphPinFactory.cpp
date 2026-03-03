@@ -1,10 +1,11 @@
-// Copyright YourTeamName. All Rights Reserved.
+﻿// Copyright (c) 2026 GregOrigin. All Rights Reserved.
 
 #include "Drawing/FBlueLineGraphPinFactory.h"
 #include "Drawing/SBlueLineGraphPin.h"
 #include "Drawing/SBlueLineGraphPinEnhanced.h" 
 #include "EdGraph/EdGraphPin.h"
-#include "EdGraph/EdGraphSchema.h"       
+#include "EdGraph/EdGraphSchema.h"
+#include "EdGraphSchema_K2.h"
 #include "GameplayTagContainer.h" 
 // REMOVED: #include "GameplayTags/Classes/GameplayTagContainer.h" (This caused the error)
 

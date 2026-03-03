@@ -1,4 +1,4 @@
-// Copyright YourTeamName. All Rights Reserved.
+﻿// Copyright (c) 2026 GregOrigin. All Rights Reserved.
 
 #include "Commands/FBlueLineCommands.h"
 #include "Styles/FBlueLineStyle.h"
@@ -29,6 +29,14 @@ void FBlueLineCommands::RegisterCommands()
 		"Inserts Reroute nodes between selected nodes to force 90-degree lines.",
 		EUserInterfaceActionType::Button,
 		FInputChord(EModifierKey::Shift, EKeys::R)
+	);
+
+	UI_COMMAND(
+		CleanGraph,
+		"Clean Graph",
+		"Analyzes the entire graph and performs an intelligent, non-destructive reorganization.",
+		EUserInterfaceActionType::Button,
+		FInputChord(EModifierKey::Shift, EKeys::C)
 	);
 }
 

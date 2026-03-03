@@ -1,10 +1,11 @@
-// Copyright YourTeamName. All Rights Reserved.
+﻿// Copyright (c) 2026 GregOrigin. All Rights Reserved.
 
 #include "Formatting/BlueLineFormatter.h"
 #include "Settings/UBlueLineEditorSettings.h"
 #include "EdGraph/EdGraphNode.h"
 #include "EdGraph/EdGraphPin.h"
 #include "EdGraph/EdGraphSchema.h"
+#include "EdGraphSchema_K2.h"
 #include "EdGraph/EdGraph.h"
 #include "ScopedTransaction.h"
 #include "Framework/Application/SlateApplication.h"

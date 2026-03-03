@@ -1,9 +1,10 @@
-// Copyright YourTeamName. All Rights Reserved.
+﻿// Copyright (c) 2026 GregOrigin. All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
+#include "Widgets/Input/SButton.h"
 #include "GameplayTagContainer.h"
 
 /**
@@ -36,7 +37,7 @@ public:
 		SLATE_ATTRIBUTE(FMargin, Padding)
 
 		/** Optional callback when the chip is clicked (e.g. Find References). */
-		SLATE_EVENT(FOnClicked, OnClicked)
+		SLATE_ARGUMENT(FOnClicked, OnClicked)
 
 	SLATE_END_ARGS()
 

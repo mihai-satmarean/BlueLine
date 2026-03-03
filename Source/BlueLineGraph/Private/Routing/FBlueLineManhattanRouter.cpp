@@ -1,4 +1,4 @@
-// Copyright YourTeamName. All Rights Reserved.
+﻿// Copyright (c) 2026 GregOrigin. All Rights Reserved.
 
 #include "Routing/FBlueLineManhattanRouter.h"
 #include "EdGraph/EdGraph.h"
@@ -213,45 +213,44 @@ void FBlueLineManhattanRouter::CalculateManhattanPath(const FVector2D& Start, co
 {
 	OutPoints.Add(Start);
 
-	// Standard "Z" shape Logic:
-	// Output -> [Knot1] -> [Knot2] -> Input
+	float DeltaX = End.X - Start.X;
+	float DeltaY = FMath::Abs(End.Y - Start.Y);
 
-	float MidX = (Start.X + End.X) * 0.5f;
+	// Proximity and Alignment Thresholds
+	const float SafeBuffer = 100.0f;
+	const float AlignmentThreshold = 10.0f; // If pins are within 10 units vertically, treat as straight line
 
-	// FIX: More aggressive spacing.
-	// The Knot must be at least 100 units to the right of the Start Pin.
-	// This prevents the "Knot inside Node" visual bug shown in your screenshot.
-	float MinX = Start.X + 100.0f;
-	float MaxX = End.X - 80.0f;
-
-	// If the nodes are squeezed too tight, prioritize the Source Output clearance
-	// so the wire doesn't clip the source node text.
-	if (MidX < MinX)
+	// 1. STRAIGHT LINE CASE: If nearly aligned vertically, just go straight to minimize knots
+	if (DeltaY < AlignmentThreshold && DeltaX > 0)
 	{
-		MidX = MinX;
+		// No knots needed, but we keep the system consistent by adding 
+		// points that result in a straight line if knots are forced.
+		// However, RouteConnection will only create knots for points 1 to N-1.
+		// If we only have Start and End, 0 knots are created.
+		OutPoints.Add(End);
+		return;
 	}
 
-	// If fixing the Start clearance pushed us past the End node, 
-	// we are too close to route cleanly. Just clamp to End minus buffer.
-	if (MidX > MaxX)
+	// 2. TIGHT SPACE / BACKWARDS CASE: Not enough room for a clean Z-bend
+	if (DeltaX < SafeBuffer)
 	{
-		// If nodes are extremely close (overlapping X), just go halfway
-		if (MaxX < MinX)
-		{
-			MidX = (Start.X + End.X) * 0.5f;
-		}
-		else
-		{
-			MidX = MaxX;
-		}
+		// If backwards, we go out 40 units then loop around.
+		// If tight but forwards, we just split the difference.
+		float OutDist = (DeltaX < 0) ? 40.0f : FMath::Max(20.0f, DeltaX * 0.5f);
+		float MidX = Start.X + OutDist;
+		
+		OutPoints.Add(FVector2D(MidX, Start.Y));
+		OutPoints.Add(FVector2D(MidX, End.Y));
+		OutPoints.Add(End);
+		return;
 	}
 
-	// Point 1 (Out, then vertical move)
+	// 3. STANDARD CASE: Clear Z-Bend (Manhattan)
+	// We use the midpoint for the vertical transition
+	float MidX = Start.X + (DeltaX * 0.5f);
+
 	OutPoints.Add(FVector2D(MidX, Start.Y));
-
-	// Point 2 (Vertical move finished, then In)
 	OutPoints.Add(FVector2D(MidX, End.Y));
-
 	OutPoints.Add(End);
 }
 
@@ -305,14 +304,93 @@ FVector2D FBlueLineManhattanRouter::GetPinPos(UEdGraphPin* Pin)
 
 	if (Pin->Direction == EGPD_Output)
 	{
-		// FIX: Use a larger minimum width heuristic.
-		// Many Function Nodes report NodeWidth=0 until resized.
-		// A preset of 160.0f clears most "Function Name" text ranges.
-		float ReportedWidth = (float)Node->NodeWidth;
-		XOffset = (ReportedWidth > 160.0f) ? ReportedWidth : 160.0f;
+		// Use actual node width if available, with a sane minimum for visibility.
+		// Knot nodes (reroutes) handled specifically to keep wires tight.
+		float Width = (float)Node->NodeWidth;
+		if (Node->IsA<UK2Node_Knot>())
+		{
+			// Knots are small dots, pins are effectively in the center (16,16)
+			XOffset = 16.0f;
+		}
+		else
+		{
+			// For regular nodes, ensure we clear the body. 
+			// If width isn't calculated yet (0), use a standard fallback.
+			XOffset = (Width > 0) ? Width : 128.0f;
+		}
+	}
+	else if (Node->IsA<UK2Node_Knot>())
+	{
+		// Input pin for a knot is also at the center
+		XOffset = 16.0f;
 	}
 
-	// Y-Offset heuristic (Header is usually ~45-50 units)
-	// Just guessing center-ish helps the knots alignment.
-	return FVector2D(Node->NodePosX + XOffset, Node->NodePosY + 48.0f);
+	// Y-Offset heuristic
+	// Header is usually ~48 units. Standard pin height is ~24 units.
+	float YOffset = 48.0f;
+	const float PinHeight = 24.0f;
+	const float HalfPinHeight = 12.0f;
+
+	int32 VisibleIndex = 0;
+	for (const UEdGraphPin* P : Node->Pins)
+	{
+		if (P == Pin)
+		{
+			break;
+		}
+
+		// Only count pins on the same side (Direction) that are actually visible
+		if (P && P->Direction == Pin->Direction && !P->bHidden)
+		{
+			VisibleIndex++;
+		}
+	}
+
+	YOffset += (VisibleIndex * PinHeight) + HalfPinHeight;
+
+	return FVector2D(Node->NodePosX + XOffset, Node->NodePosY + YOffset);
+}
+
+int32 FBlueLineManhattanRouter::CleanupOrphanedRerouteNodes(UEdGraph* Graph)
+{
+	if (!Graph) return 0;
+
+	const FScopedTransaction Transaction(NSLOCTEXT("BlueLine", "Cleanup", "Cleanup BlueLine Reroutes"));
+	Graph->Modify();
+
+	int32 Count = 0;
+	TArray<UEdGraphNode*> NodesToDestroy;
+
+	for (UEdGraphNode* Node : Graph->Nodes)
+	{
+		if (UK2Node_Knot* Knot = Cast<UK2Node_Knot>(Node))
+		{
+			// Check connections
+			UEdGraphPin* InPin = Knot->GetInputPin();
+			UEdGraphPin* OutPin = Knot->GetOutputPin();
+
+			bool bHasInput = InPin && InPin->LinkedTo.Num() > 0;
+			bool bHasOutput = OutPin && OutPin->LinkedTo.Num() > 0;
+
+			// Remove if completely disconnected or only one-way connected (dead end)
+			// (Behavior: Clean anything that doesn't bridge two nodes)
+			if (!bHasInput || !bHasOutput)
+			{
+				NodesToDestroy.Add(Knot);
+			}
+		}
+	}
+
+	for (UEdGraphNode* Node : NodesToDestroy)
+	{
+		Graph->RemoveNode(Node);
+		Count++;
+	}
+
+	if (Count > 0)
+	{
+		Graph->NotifyGraphChanged();
+	}
+
+	return Count;
 }

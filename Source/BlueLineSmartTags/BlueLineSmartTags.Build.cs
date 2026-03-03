@@ -1,4 +1,4 @@
-// Copyright YourTeamName. All Rights Reserved.
+﻿// Copyright (c) 2026 GregOrigin. All Rights Reserved.
 
 using UnrealBuildTool;
 
@@ -7,8 +7,6 @@ public class BlueLineSmartTags : ModuleRules
     public BlueLineSmartTags(ReadOnlyTargetRules Target) : base(Target)
     {
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-
-	//	bUseUnity = false;
 
         PublicDependencyModuleNames.AddRange(
             new string[]
@@ -27,11 +25,17 @@ public class BlueLineSmartTags : ModuleRules
                 "Slate",
                 "SlateCore",
                 "InputCore",
+                "MainFrame",        // Required to bind commands to the editor mainframe
+                "GraphEditor",      // Required for SGraphEditor access
+                "BlueLineGraph",
+                "BlueprintGraph",   // Required for UK2Node access
+                "KismetCompiler",   // Required for some K2Node linkage
                 "EditorFramework", // Required for modern UE5 editor styling
                 "UnrealEd",        // Essential for Editor-only logic
                 "PropertyEditor",  // Required to register IPropertyTypeCustomization
                 "EditorStyle",     // For accessing UE5 fonts and brushes
-                "GameplayTagsEditor" // To interact with existing Tag UI logic
+                "GameplayTagsEditor", // To interact with existing Tag UI logic
+                "ToolMenus"        // Required for modern context menu extensions
             }
         );
     }

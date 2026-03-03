@@ -1,4 +1,4 @@
-// Copyright YourTeamName. All Rights Reserved.
+﻿// Copyright (c) 2026 GregOrigin. All Rights Reserved.
 
 #pragma once
 
@@ -38,6 +38,8 @@ public:
 	 */
 	TSharedPtr<FUICommandInfo> AutoFormatSelected; // Shift + Q
 	TSharedPtr<FUICommandInfo> RigidifyConnections; // Shift + R
+	TSharedPtr<FUICommandInfo> CleanGraph; // Shift + C
+	TSharedPtr<FUICommandInfo> AutoTagGraph; // Shift + T
 
 	/** 
 	 * Command: Toggle Wire Style
