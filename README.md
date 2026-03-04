@@ -9,11 +9,37 @@
 [Update video 3](https://www.youtube.com/watch?v=PtDSXUfajH8) <br>
 
 <img width="1280" height="720" alt="bluel111" src="https://github.com/user-attachments/assets/c17413bf-5ded-4ce3-98f0-129d0a77e44a" />
+<br><br><br>
 
 
-**BlueLine** is a lightweight, modular editor productivity & visualization plugin for Unreal Engine 5.7+. At its current state (0.2), it solves the "Spaghetti Code" problem in Blueprints by enforcing strict, circuit-board-style layouts and semantically coloring data.
+**BlueLine** is a lightweight, modular editor productivity & visualization plugin for Unreal Engine 5.7+. At its current state (0.4+), it solves the "Spaghetti Code" problem in Blueprints by enforcing strict, circuit-board-style layouts and semantically coloring data. If you're interested, a more evolved, complex and polished branch is [available on Fab](https://www.fab.com/listings/e63e4083-675d-44ad-a20e-487ceea6ffb1). <br><br>
 
-Its current pillars are:
+| <i><b>Comparison | <i><b>GitHub version (0.1+ MIT)           | <i>FAB edition (0.4+ Closed)</b></i>                |
+|:---|:---|:---|
+| **Version** | Core | Fully featured + updated |
+| **Distribution** | Source only | Binaries, vetted by Epic |
+| **Engine support** | UE 5.7.0 | UE 5.6 - 5.7.3+ |
+| **Auto-align selected nodes** | Included | Included |
+| **Rigidify wires** | Included | Included |
+| **Global clean graph** | Included | Included |
+| **Smart Tagging** | Included | Included |
+| **Automation tests** | Included | Included |
+| **Toggle wire styles** | n/a | Included | 
+| **Extract to Subsystem** | n/a | Included |
+| **Export Blueprint to text** | n/a | Included |
+| **Set / Jump to bookmarks** | n/a | Included | 
+| **Node Snippet creation / insertion** | n/a | Included |
+| **Auto-Tag selection (with AI)** | n/a | Included |
+| **Level editor Pie menu** | n/a | Included |
+| **Extensive configuration settings** | n/a | Included |
+| **Theme system: wires and tags** | n/a | Included |
+| **Bookmarks/Snippets persistence (JSON)** | n/a | Included |
+| **Updates** | n/a | Regular, vetted by Epic |
+| **Quality Assurance** | GitHub Issues | Vetted by Epic, tested by author |
+| **Support** | GitHub Issues | Forum & Email |
+<br>
+
+BlueLine's current pillars are:
 
    1. Pathfinding ReRouting (Clean Wires):
        * Instead of the default curved splines that overlap messily, this plugin inserts "Knot" (Reroute) nodes to force wires into grid-snapped 90-degree angles.
