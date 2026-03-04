@@ -25,17 +25,17 @@
 | **Smart Tagging** | Included | Included |
 | **Automation tests** | Included | Included |
 | **Toggle wire styles** | n/a | Included | 
-| **Magnetic wire snapping** | n/a | Included |
-| **Extract to Subsystem** | n/a | Included |
-| **Export Blueprint to text** | n/a | Included |
-| **Set / Jump to bookmarks** | n/a | Included | 
-| **Node Snippet creation / insertion** | n/a | Included |
+| **Magnetic wire snapping (0.4)** | n/a | Included |
+| **Extract to Subsystem (0.4)** | n/a | Included |
+| **Export Blueprint to text (0.4)** | n/a | Included |
+| **Set / Jump to bookmarks (0.4)** | n/a | Included | 
+| **Node Snippet creation / insertion (0.4)** | n/a | Included |
 | **Auto-Tag selection (with AI)** | n/a | Included |
-| **Level editor Pie menu** | n/a | Included |
+| **Level editor Pie menu (0.4)** | n/a | Included |
 | **Extensive configuration settings** | n/a | Included |
 | **Theme system: wires and tags** | n/a | Included |
-| **Bookmarks/Snippets persistence (JSON)** | n/a | Included |
-| **Zero runtime overhead** | n/a | Included |
+| **Bookmarks/Snippets persistence w/ JSON (0.4)** | n/a | Included |
+| **Zero runtime overhead (0.4)** | n/a | Included |
 | **Updates** | n/a | Regular, vetted by Epic |
 | **Quality Assurance** | GitHub Issues | Vetted by Epic, tested by author |
 | **Support** | GitHub Issues | Forum & Email |
