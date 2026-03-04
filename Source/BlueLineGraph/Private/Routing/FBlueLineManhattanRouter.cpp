@@ -1,18 +1,20 @@
 ﻿// Copyright (c) 2026 GregOrigin. All Rights Reserved.
 
 #include "Routing/FBlueLineManhattanRouter.h"
+
+#include "Utils/BlueLineContextUtils.h"
+#include "Settings/UBlueLineEditorSettings.h"
 #include "EdGraph/EdGraph.h"
 #include "EdGraph/EdGraphPin.h"
 #include "EdGraph/EdGraphNode.h"
 #include "EdGraph/EdGraphSchema.h"
 #include "K2Node_Knot.h"
 #include "ScopedTransaction.h"
-#include "Framework/Application/SlateApplication.h"
 #include "SGraphPanel.h" 
 #include "EdGraphUtilities.h"
 #include "BlueLineLog.h"
 
-FBlueLineManhattanRouter::FConfig FBlueLineManhattanRouter::Config;
+
 
 // Helper struct to persist pin identity across reconstructions
 struct FPersistentPin
@@ -32,6 +34,8 @@ struct FPersistentPin
 		else
 		{
 			Node = nullptr;
+			PinName = NAME_None;
+			Direction = EGPD_Input;
 		}
 	}
 
@@ -48,25 +52,8 @@ struct FPersistentPin
 
 void FBlueLineManhattanRouter::RigidifySelectedConnections()
 {
-	// 1. Context Search
-	TSharedPtr<SWidget> FocusedWidget = FSlateApplication::Get().GetKeyboardFocusedWidget();
-	if (!FocusedWidget.IsValid()) return;
-
-	TSharedPtr<SGraphPanel> GraphPanel;
-	TSharedPtr<SWidget> CurrentWidget = FocusedWidget;
-
-	int32 Depth = 0;
-	while (CurrentWidget.IsValid() && Depth < 50)
-	{
-		if (CurrentWidget->GetType().ToString().Contains(TEXT("GraphPanel")))
-		{
-			GraphPanel = StaticCastSharedPtr<SGraphPanel>(CurrentWidget);
-			break;
-		}
-		CurrentWidget = CurrentWidget->GetParentWidget();
-		Depth++;
-	}
-
+	// 1. Context Search - Use centralized utility
+	TSharedPtr<SGraphPanel> GraphPanel = FBlueLineContextUtils::GetFocusedGraphPanel();
 	if (!GraphPanel.IsValid()) return;
 
 	const FGraphPanelSelectionSet& Selection = GraphPanel->SelectionManager.GetSelectedNodes();
@@ -101,7 +88,9 @@ void FBlueLineManhattanRouter::RigidifySelectedConnections()
 				if (SelectedNodes.Contains(Target))
 				{
 					// Left-to-Right only
-					if (Target->NodePosX > Source->NodePosX + 150)
+					const UBlueLineEditorSettings* Settings = UBlueLineEditorSettings::Get();
+					float MinSpacing = Settings ? Settings->MinRigidifySpacing : 100.0f;
+					if (Target->NodePosX > Source->NodePosX + MinSpacing)
 					{
 						Requests.Add({ FPersistentPin(OutputPin), FPersistentPin(InputPin) });
 					}
@@ -216,9 +205,15 @@ void FBlueLineManhattanRouter::CalculateManhattanPath(const FVector2D& Start, co
 	float DeltaX = End.X - Start.X;
 	float DeltaY = FMath::Abs(End.Y - Start.Y);
 
+	const UBlueLineEditorSettings* Settings = UBlueLineEditorSettings::Get();
+	
 	// Proximity and Alignment Thresholds
 	const float SafeBuffer = 100.0f;
-	const float AlignmentThreshold = 10.0f; // If pins are within 10 units vertically, treat as straight line
+	float AlignmentThreshold = 10.0f;
+	if (Settings)
+	{
+		AlignmentThreshold = Settings->HorizontalStubLength * 0.2f; // 20% of stub length
+	}
 
 	// 1. STRAIGHT LINE CASE: If nearly aligned vertically, just go straight to minimize knots
 	if (DeltaY < AlignmentThreshold && DeltaX > 0)
@@ -262,19 +257,17 @@ UK2Node_Knot* FBlueLineManhattanRouter::CreateRerouteNode(UEdGraph* Graph, const
 	Knot->NodePosX = (int32)Position.X;
 	Knot->NodePosY = (int32)Position.Y;
 
-	if (Config.bSnapToGrid)
+	const UBlueLineEditorSettings* Settings = UBlueLineEditorSettings::Get();
+	if (Settings && Settings->bSnapReroutesToGrid)
 	{
-		Knot->SnapToGrid(Config.GridSnapSize);
+		Knot->SnapToGrid(Settings->GridSnapSize);
 	}
 
 	Knot->AllocateDefaultPins();
 
-	// FIX: Finalize first to generate Wildcards
-	NodeCreator.Finalize();
-
-	// FIX: IMMEDIATELY set the type so it is recorded in the transaction state correctly.
-	// Doing this here ensures that when Undo restores the node, it has the specific type, 
-	// preventing "Wildcard vs Concrete" mismatches upon re-connection.
+	// Set pin types BEFORE Finalize so the undo snapshot captures the correct types.
+	// Previously this was done after Finalize, which caused undo to restore wildcard pins
+	// and corrupt the graph with type mismatches.
 	if (UEdGraphPin* InPin = Knot->GetInputPin())
 	{
 		InPin->PinType = PinType;
@@ -283,6 +276,8 @@ UK2Node_Knot* FBlueLineManhattanRouter::CreateRerouteNode(UEdGraph* Graph, const
 	{
 		OutPin->PinType = PinType;
 	}
+
+	NodeCreator.Finalize();
 
 	return Knot;
 }

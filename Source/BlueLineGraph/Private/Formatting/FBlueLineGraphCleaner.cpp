@@ -1,8 +1,10 @@
 ﻿// Copyright (c) 2026 GregOrigin. All Rights Reserved.
 
 #include "Formatting/FBlueLineGraphCleaner.h"
-#include "Analysis/FBlueLineGraphAnalyzer.h"
-#include "Settings/UBlueLineEditorSettings.h"
+#include "BlueLineLog.h"
+#include "Routing/FBlueLineManhattanRouter.h"
+#include "Analysis/FBlueLineGraphAnalyzer.h"  // Now in BlueLineCore
+#include "BlueLineCore/Public/Settings/UBlueLineEditorSettings.h"
 #include "EdGraph/EdGraph.h"
 #include "EdGraph/EdGraphNode.h"
 #include "EdGraph/EdGraphPin.h"
@@ -11,6 +13,7 @@
 #include "GraphEditor.h"
 #include "SGraphPanel.h"
 #include "K2Node_Knot.h"
+#include "Misc/DateTime.h"  // For deterministic RNG seeding
 
 #define LOCTEXT_NAMESPACE "BlueLineGraphCleaner"
 
@@ -29,6 +32,9 @@ void FBlueLineGraphCleaner::CleanGraph(UEdGraph* Graph)
 
     FScopedTransaction Transaction(LOCTEXT("CleanGraphTrans", "BlueLine: Clean Graph"));
     
+    // Clean up clutter first
+    FBlueLineManhattanRouter::CleanupOrphanedRerouteNodes(Graph);
+
     // 1. Analyze
     FBlueLineGraphAnalyzer::FAnalysisResult Analysis = FBlueLineGraphAnalyzer::AnalyzeGraph(Graph);
     
@@ -71,10 +77,12 @@ void FBlueLineGraphCleaner::CleanGraph(UEdGraph* Graph)
     }
 
     const UBlueLineEditorSettings* Settings = GetDefault<UBlueLineEditorSettings>();
-    const float HorizontalSpacing = Settings ? Settings->FormatterPadding * 2.5f : 300.0f;
+    const float HorizontalSpacing = Settings ? Settings->HorizontalSpacing : 300.0f;
     const float VerticalSpacing = 120.0f;
 
     float CurrentIslandY = 0.0f;
+
+    bool bSkipGA = Analysis.TotalNodes > 500;
 
     // 3. Process each Island
     for (const TArray<UEdGraphNode*>& Island : Islands)
@@ -143,7 +151,10 @@ void FBlueLineGraphCleaner::CleanGraph(UEdGraph* Graph)
         }
 
         // --- UPGRADE: Genetic Algorithm for Crossing Minimization ---
-        EvolutionaryCrossingMinimizer(RankGroups, Graph);
+        if (!bSkipGA && Island.Num() > 1)
+        {
+            EvolutionaryCrossingMinimizer(RankGroups, Graph);
+        }
 
         float IslandMaxHeight = 0.0f;
         for (auto& KVP : RankGroups)
@@ -167,7 +178,14 @@ void FBlueLineGraphCleaner::CleanGraph(UEdGraph* Graph)
 
     Graph->NotifyGraphChanged();
     
-    UE_LOG(LogTemp, Log, TEXT("BlueLine: Cleaned %d nodes in %d islands using Evolutionary Optimization."), Analysis.TotalNodes, Islands.Num());
+    if (bSkipGA)
+    {
+        UE_LOG(LogBlueLineCore, Warning, TEXT("BlueLine: Cleaned %d nodes (Bypassed Genetic Algorithm due to size)."), Analysis.TotalNodes);
+    }
+    else
+    {
+        UE_LOG(LogBlueLineCore, Log, TEXT("BlueLine: Cleaned %d nodes in %d islands using Evolutionary Optimization."), Analysis.TotalNodes, Islands.Num());
+    }
 }
 
 void FBlueLineGraphCleaner::EvolutionaryCrossingMinimizer(TMap<int32, TArray<UEdGraphNode*>>& RankGroups, UEdGraph* Graph)
@@ -176,6 +194,32 @@ void FBlueLineGraphCleaner::EvolutionaryCrossingMinimizer(TMap<int32, TArray<UEd
     const int32 PopulationSize = 30;
     const int32 MaxGenerations = 40;
     const float MutationRate = 0.15f;
+
+    // SAFETY: Seed random number generator for deterministic results based on graph state
+    // This ensures the same graph produces the same layout, while different graphs get different seeds
+    uint32 Seed = 0;
+    if (Graph && Graph->Nodes.Num() > 0)
+    {
+        // Create a seed based on graph characteristics
+        for (UEdGraphNode* Node : Graph->Nodes)
+        {
+            if (Node)
+            {
+                Seed = Seed * 31 + (uint32)Node->NodePosX;
+                Seed = Seed * 31 + (uint32)Node->NodePosY;
+            }
+        }
+        // Mix in node count for additional uniqueness
+        Seed ^= (uint32)Graph->Nodes.Num() * 0x9e3779b9;
+    }
+    
+    // If no valid graph data, use time-based seed
+    if (Seed == 0)
+    {
+        Seed = (uint32)FDateTime::Now().GetTicks();
+    }
+    
+    FMath::RandInit(Seed);
 
     struct FIndividual
     {
@@ -255,8 +299,15 @@ void FBlueLineGraphCleaner::EvolutionaryCrossingMinimizer(TMap<int32, TArray<UEd
             auto GetAvgParentY = [&](const UEdGraphNode& Node) {
                 float SumY = 0.0f; int32 Count = 0;
                 for (UEdGraphPin* Pin : Node.Pins) {
-                    if (Pin->Direction == EGPD_Input) {
-                        for (UEdGraphPin* LP : Pin->LinkedTo) { SumY += LP->GetOwningNode()->NodePosY; Count++; }
+                    // SAFETY: Check Pin validity before accessing
+                    if (Pin && Pin->Direction == EGPD_Input) {
+                        for (UEdGraphPin* LP : Pin->LinkedTo) {
+                            // SAFETY: Check linked pin and owning node validity
+                            if (LP && LP->GetOwningNode()) {
+                                SumY += LP->GetOwningNode()->NodePosY; 
+                                Count++;
+                            }
+                        }
                     }
                 }
                 return Count > 0 ? SumY / Count : 0.0f;
@@ -353,12 +404,19 @@ UEdGraph* FBlueLineGraphCleaner::GetActiveGraph()
     TSharedPtr<SWidget> CurrentWidget = FocusedWidget;
 
     int32 Depth = 0;
+    
     while (CurrentWidget.IsValid() && Depth < 50)
     {
-        if (CurrentWidget->GetType().ToString().Contains(TEXT("GraphEditor")))
+        // SAFETY: Verify type string before casting
+        const FName CurrentType = CurrentWidget->GetType();
+        if (CurrentType.ToString().Contains(TEXT("GraphEditor")))
         {
-            GraphEditor = StaticCastSharedPtr<SGraphEditor>(CurrentWidget);
-            break;
+            TSharedPtr<SGraphEditor> Editor = StaticCastSharedPtr<SGraphEditor>(CurrentWidget);
+            if (Editor.IsValid())
+            {
+                GraphEditor = Editor;
+                break;
+            }
         }
         CurrentWidget = CurrentWidget->GetParentWidget();
         Depth++;

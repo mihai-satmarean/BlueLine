@@ -1,7 +1,7 @@
 ﻿// Copyright (c) 2026 GregOrigin. All Rights Reserved.
 
 #include "Drawing/FBlueLineConnectionPolicy.h"
-#include "Settings/UBlueLineEditorSettings.h"
+#include "BlueLineCore/Public/Settings/UBlueLineEditorSettings.h"
 #include "Debug/BlueLineDebugLib.h"
 #include "Rendering/DrawElements.h"
 #include "EdGraph/EdGraphPin.h"
@@ -29,7 +29,31 @@ FBlueLineConnectionPolicy::FBlueLineConnectionPolicy(int32 InBackLayerID, int32 
 void FBlueLineConnectionPolicy::DetermineWiringStyle(UEdGraphPin* OutputPin, UEdGraphPin* InputPin, FConnectionParams& Params)
 {
 	Super::DetermineWiringStyle(OutputPin, InputPin, Params);
-	Params.WireThickness = WireSettings.WireThickness;
+	
+	// FIX: Apply WireStyle setting from editor settings
+	float BaseThickness = WireSettings.WireThickness;
+	if (Settings)
+	{
+		switch (Settings->WireStyle)
+		{
+		case EBlueLineWireStyle::Thin:
+			BaseThickness = 1.5f;
+			break;
+		case EBlueLineWireStyle::Medium:
+			BaseThickness = 2.5f;
+			break;
+		case EBlueLineWireStyle::Thick:
+			BaseThickness = 4.0f;
+			break;
+		case EBlueLineWireStyle::Dynamic:
+			// Keep the theme's default thickness for dynamic (it's type-based via theme)
+			BaseThickness = WireSettings.WireThickness;
+			break;
+		}
+		// Apply thickness multiplier
+		BaseThickness *= Settings->WireThicknessMultiplier;
+	}
+	Params.WireThickness = BaseThickness;
 }
 
 void FBlueLineConnectionPolicy::DrawConnection(int32 LayerId, const FVector2f& Start, const FVector2f& End, const FConnectionParams& Params)
@@ -40,7 +64,7 @@ void FBlueLineConnectionPolicy::DrawConnection(int32 LayerId, const FVector2f& S
 
 void FBlueLineConnectionPolicy::DrawSplineWithArrow(const FVector2f& StartPoint, const FVector2f& EndPoint, const FConnectionParams& Params)
 {
-	if (Settings && !Settings->bEnableManhattanRouting)
+	if (Settings && Settings->RoutingMethod == EBlueLineRoutingMethod::Curved)
 	{
 		Super::DrawSplineWithArrow(StartPoint, EndPoint, Params);
 		return;
@@ -103,7 +127,8 @@ void FBlueLineConnectionPolicy::ComputeManhattanPath(const FVector2f& Start, con
 	OutPoints.Reset();
 	OutPoints.Add(Start);
 
-	const float StubLength = 20.0f * LocalZoomFactor;
+	// FIX: Use StubLength from settings instead of hardcoded value
+	const float StubLength = (Settings ? Settings->StubLength : 20.0f) * LocalZoomFactor;
 	FVector2f StartStub = Start + FVector2f(StubLength, 0.0f);
 	FVector2f EndStub = End - FVector2f(StubLength, 0.0f);
 

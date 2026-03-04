@@ -6,14 +6,15 @@
 #include "Drawing/FBlueLineGraphPanelFactory.h"
 #include "Drawing/FBlueLineGraphPinFactory.h"
 #include "Formatting/BlueLineFormatter.h"
-#include "Styles/FBlueLineStyle.h"
-#include "Settings/UBlueLineEditorSettings.h"
+#include "Styles/FBlueLineStyle.h"  // From BlueLineCore (shared)
+#include "BlueLineCore/Public/Settings/UBlueLineEditorSettings.h"
 
 // Routing & UI Includes
 #include "Routing/FBlueLineManhattanRouter.h"
 #include "Routing/FBlueLineConnectionInterceptor.h"
+#include "Routing/FBlueLineWireSnapper.h"
 #include "Formatting/FBlueLineGraphCleaner.h"
-#include "UI/FBlueLineGraphMenuExtender.h" // <--- Valid here
+#include "UI/FBlueLineGraphMenuExtender.h"
 
 // Framework Includes
 #include "Commands/FBlueLineCommands.h"
@@ -23,11 +24,22 @@
 #include "Framework/Commands/UICommandList.h"
 #include "EdGraphUtilities.h"
 
+// For dialogs
+#include "Framework/Application/SlateApplication.h"
+#include "Widgets/Input/SEditableTextBox.h"
+#include "Widgets/Layout/SBox.h"
+#include "Widgets/Input/SButton.h"
+#include "Widgets/Text/STextBlock.h"
+#include "Widgets/SBoxPanel.h"
+#include "Widgets/Views/SListView.h"
+#include "Widgets/Views/STableRow.h"
+#include "Widgets/Layout/SScrollBox.h"
+
 #define LOCTEXT_NAMESPACE "BlueLineGraph"
 
 void FBlueLineGraphModule::StartupModule()
 {
-	FBlueLineStyle::Initialize();
+	// Note: FBlueLineStyle is initialized by BlueLineCore (shared style system)
 	FBlueLineCommands::Register();
 	RegisterCommands();
 
@@ -39,6 +51,7 @@ void FBlueLineGraphModule::StartupModule()
 	FBlueLineGraphMenuExtender::Register(); // <--- Init Context Menu
 
 	FBlueLineConnectionInterceptor::Enable();
+	FBlueLineWireSnapper::Enable();
 
 	UE_LOG(LogBlueLineCore, Log, TEXT("BlueLineGraph: Module Started."));
 }
@@ -46,6 +59,7 @@ void FBlueLineGraphModule::StartupModule()
 void FBlueLineGraphModule::ShutdownModule()
 {
 	FBlueLineConnectionInterceptor::Disable();
+	FBlueLineWireSnapper::Disable();
 
 	// Cleanup Menus
 	FBlueLineGraphMenuExtender::Unregister();
@@ -60,12 +74,13 @@ void FBlueLineGraphModule::ShutdownModule()
 	}
 
 	FBlueLineCommands::Unregister();
-	FBlueLineStyle::Shutdown();
+	// Note: FBlueLineStyle is shut down by BlueLineCore (shared style system)
 }
 
 void FBlueLineGraphModule::RegisterCommands()
 {
 	PluginCommands = MakeShareable(new FUICommandList);
+	UE_LOG(LogBlueLineCore, Log, TEXT("BlueLineGraph: Registering commands..."));
 
 	// Shift+Q (Format)
 	PluginCommands->MapAction(
@@ -85,21 +100,61 @@ void FBlueLineGraphModule::RegisterCommands()
 		FExecuteAction::CreateStatic(&FBlueLineGraphCleaner::CleanActiveGraph)
 	);
 
-	// F8 Toggle (Optional/Legacy)
+	// Shift+W Toggle (Changed to avoid conflict with Engine's "Possess or Eject Player")
+	UE_LOG(LogBlueLineCore, Log, TEXT("BlueLineGraph: Mapping Shift+W to ToggleWireStyle"));
 	PluginCommands->MapAction(
 		FBlueLineCommands::Get().ToggleWireStyle,
 		FExecuteAction::CreateLambda([]() {
 			UBlueLineEditorSettings* S = GetMutableDefault<UBlueLineEditorSettings>();
-			S->bEnableManhattanRouting = !S->bEnableManhattanRouting;
+			// Cycle through routing methods: Curved -> Manhattan -> Circuit -> Hybrid -> Curved
+			int32 CurrentMethod = static_cast<int32>(S->RoutingMethod);
+			int32 NextMethod = (CurrentMethod + 1) % 4;
+			S->RoutingMethod = static_cast<EBlueLineRoutingMethod>(NextMethod);
 			S->PostEditChange();
 			S->SaveConfig();
+			
+			// FIX: Refresh all visible graph editors to apply the wire style change immediately
+			FSlateApplication& SlateApp = FSlateApplication::Get();
+			TArray<TSharedRef<SWindow>> AllWindows;
+			SlateApp.GetAllVisibleWindowsOrdered(AllWindows);
+			for (const TSharedRef<SWindow>& Window : AllWindows)
+			{
+				// Recursively search for SGraphEditor widgets
+				TArray<TSharedRef<SWidget>> WidgetStack;
+				WidgetStack.Add(Window);
+				while (WidgetStack.Num() > 0)
+				{
+					TSharedRef<SWidget> Widget = WidgetStack.Pop();
+					if (Widget->GetType() == TEXT("SGraphEditor"))
+					{
+						// Invalidate the graph editor to trigger a redraw with the new wire style
+						Widget->Invalidate(EInvalidateWidgetReason::PaintAndVolatility);
+					}
+					// Add children to stack
+					FChildren* Children = Widget->GetChildren();
+					for (int32 i = 0; i < Children->Num(); ++i)
+					{
+						WidgetStack.Add(Children->GetChildAt(i));
+					}
+				}
+			}
+			
+			// Log the new routing method name for user feedback
+			static const TCHAR* RoutingNames[] = { TEXT("Curved"), TEXT("Manhattan"), TEXT("Circuit"), TEXT("Hybrid") };
+			UE_LOG(LogBlueLineCore, Log, TEXT("ToggleWireStyle executed: routing=%d (%s)"), NextMethod, RoutingNames[NextMethod]);
 			})
 	);
 
+	// Bind to MainFrame (global commands)
 	if (FModuleManager::Get().IsModuleLoaded("MainFrame"))
 	{
 		IMainFrameModule& MainFrame = FModuleManager::LoadModuleChecked<IMainFrameModule>("MainFrame");
 		MainFrame.GetMainFrameCommandBindings()->Append(PluginCommands.ToSharedRef());
+		UE_LOG(LogBlueLineCore, Log, TEXT("BlueLineGraph: Commands bound to MainFrame"));
+	}
+	else
+	{
+		UE_LOG(LogBlueLineCore, Warning, TEXT("BlueLineGraph: MainFrame not loaded!"));
 	}
 }
 

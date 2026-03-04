@@ -19,7 +19,7 @@ class BLUELINESMARTTAGS_API UK2Node_TagDemo : public UK2Node
 public:
 	/** 
 	 * A tag stored directly inside the node. 
-	 * Select this node in the graph to see the âœ¨ button in the Details panel.
+	 * Select this node in the graph to see the ✨ button in the Details panel.
 	 */
 	UPROPERTY(EditAnywhere, Category = "Tagging")
 	FBlueLineTagStyle NodeSemanticTag;
@@ -34,5 +34,6 @@ public:
 	// UK2Node interface
 	virtual void GetMenuActions(FBlueprintActionDatabaseRegistrar& ActionRegistrar) const override;
 	virtual FText GetMenuCategory() const override;
+	virtual void ExpandNode(class FKismetCompilerContext& CompilerContext, UEdGraph* SourceGraph) override;
 	// End of UK2Node interface
 };

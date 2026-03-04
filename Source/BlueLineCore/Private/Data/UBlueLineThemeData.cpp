@@ -42,10 +42,10 @@ FLinearColor UBlueLineThemeData::GetColorForTag(const FGameplayTag& Tag) const
 			// Rule B: "Status.Debuff" (Specific)
 			// Both match. But Rule B is better.
 			//
-			// We use the length of the tag string as a proxy for "Specificity/Depth".
-			// "Status.Debuff" is longer than "Status", so it wins.
+			// We use the MatchesTagDepth method to accurately determine how closely related the tags are.
+			// The higher the returned integer, the closer the match in the hierarchy.
 			
-			const int32 Specificity = Rule.Tag.ToString().Len();
+			const int32 Specificity = Tag.MatchesTagDepth(Rule.Tag);
 
 			if (Specificity > BestMatchSpecificity)
 			{

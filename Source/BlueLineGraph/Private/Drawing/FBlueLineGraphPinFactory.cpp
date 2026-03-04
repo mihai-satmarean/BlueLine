@@ -25,6 +25,8 @@ TSharedPtr<SGraphPin> FBlueLineGraphPinFactory::CreatePin(UEdGraphPin* InPin) co
 		}
 	}
 
-	// 2. Apply Enhanced Visualization (Stubs/Count) to ALL other pins
-	return SNew(SBlueLineGraphPinEnhanced, InPin);
+	// 2. For non-GameplayTag pins, return nullptr to let other factories handle them.
+	// Previously this returned SBlueLineGraphPinEnhanced for ALL pins, which blocked
+	// every other plugin's pin factory from ever creating custom pin widgets.
+	return nullptr;
 }

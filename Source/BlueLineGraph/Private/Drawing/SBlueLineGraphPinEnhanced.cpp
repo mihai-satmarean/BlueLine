@@ -1,7 +1,7 @@
 ﻿// Copyright (c) 2026 GregOrigin. All Rights Reserved.
 
 #include "Drawing/SBlueLineGraphPinEnhanced.h"
-#include "Settings/UBlueLineEditorSettings.h"
+#include "BlueLineCore/Public/Settings/UBlueLineEditorSettings.h"
 #include "EdGraph/EdGraphPin.h"
 #include "EdGraph/EdGraphSchema.h" 
 #include "Rendering/DrawElements.h"
@@ -9,6 +9,7 @@
 #include "Fonts/FontMeasure.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Layout/Geometry.h" // <--- FIX: Provides FSlateLayoutTransform
+#include "Routing/FBlueLineWireSnapper.h"
 
 void SBlueLineGraphPinEnhanced::Construct(const FArguments& InArgs, UEdGraphPin* InPin)
 {
@@ -30,7 +31,18 @@ int32 SBlueLineGraphPinEnhanced::OnPaint(
 		LayerId, InWidgetStyle, bParentEnabled);
 
 	const UBlueLineEditorSettings* Settings = GetSettings();
-	if (!Settings || !Settings->bEnableManhattanRouting || !GraphPinObj || GraphPinObj->LinkedTo.Num() == 0)
+	
+	// Master switch check
+	if (!Settings || !Settings->bEnableBlueLine || !Settings->IsBlueLineEnabled())
+	{
+		return LayerId;
+	}
+	
+	// Check if Manhattan routing is enabled
+	bool bShouldDrawStubs = (Settings->RoutingMethod == EBlueLineRoutingMethod::Manhattan ||
+	                         Settings->RoutingMethod == EBlueLineRoutingMethod::Hybrid);
+	
+	if (!bShouldDrawStubs || !GraphPinObj || GraphPinObj->LinkedTo.Num() == 0)
 	{
 		return LayerId;
 	}
@@ -64,6 +76,16 @@ void SBlueLineGraphPinEnhanced::OnMouseLeave(const FPointerEvent& MouseEvent)
 	bIsHovered = false;
 }
 
+FReply SBlueLineGraphPinEnhanced::OnDragDetected(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent)
+{
+	FReply Reply = SGraphPin::OnDragDetected(MyGeometry, MouseEvent);
+	if (Reply.GetDragDropContent().IsValid())
+	{
+		FBlueLineWireSnapper::SetIsDraggingWire(true);
+	}
+	return Reply;
+}
+
 const UBlueLineEditorSettings* SBlueLineGraphPinEnhanced::GetSettings() const
 {
 	return GetDefault<UBlueLineEditorSettings>();
@@ -95,9 +117,12 @@ void SBlueLineGraphPinEnhanced::DrawOrthogonalStub(
 	const float StubThickness = GetStubThickness() * AllottedGeometry.Scale;
 
 	FLinearColor StubColor = GetStubColor(true);
-	if (bIsHovered)
+	
+	const UBlueLineEditorSettings* Settings = GetSettings();
+	if (bIsHovered && Settings && Settings->bHighlightWiresOnHover)
 	{
-		StubColor = FLinearColor::LerpUsingHSV(StubColor, FLinearColor::White, 0.3f);
+		float Intensity = FMath::Clamp(Settings->WireHighlightIntensity - 1.0f, 0.0f, 1.0f);
+		StubColor = FLinearColor::LerpUsingHSV(StubColor, FLinearColor::White, Intensity);
 	}
 
 	FSlateDrawElement::MakeLines(

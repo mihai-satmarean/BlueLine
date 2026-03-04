@@ -20,7 +20,7 @@ public:
 
 	/** 
 	 * This variable will show the BlueLine Smart UI in the Details panel.
-	 * Click the âœ¨ icon to see the Smart Tag Analyzer in action!
+	 * Click the ✨ icon to see the Smart Tag Analyzer in action!
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BlueLine Demo")
 	FBlueLineTagStyle DemoTag;

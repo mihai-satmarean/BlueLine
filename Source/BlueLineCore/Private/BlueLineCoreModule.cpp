@@ -2,19 +2,22 @@
 
 #include "BlueLineCoreModule.h"
 #include "BlueLineLog.h"
-
-// FIX: Do NOT define log categories here. They are defined in BlueLineLog.cpp.
-// DEFINE_LOG_CATEGORY(LogBlueLineCore); <--- DELETED
-// DEFINE_LOG_CATEGORY(LogBlueLineDebug); <--- DELETED
+#include "Styles/FBlueLineStyle.h"
 
 void FBlueLineCoreModule::StartupModule()
 {
+	// Initialize shared style system (used by all BlueLine modules)
+	FBlueLineStyle::Initialize();
+	
 	UE_LOG(LogBlueLineCore, Log, TEXT("BlueLineCore module has started."));
 }
 
 void FBlueLineCoreModule::ShutdownModule()
 {
 	UE_LOG(LogBlueLineCore, Log, TEXT("BlueLineCore module is shutting down."));
+	
+	// Shutdown shared style system
+	FBlueLineStyle::Shutdown();
 }
 
 IMPLEMENT_MODULE(FBlueLineCoreModule, BlueLineCore)

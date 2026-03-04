@@ -1,7 +1,9 @@
 ﻿// Copyright (c) 2026 GregOrigin. All Rights Reserved.
 
 #include "FBlueLineSmartTagAnalyzer.h"
-#include "Analysis/FBlueLineGraphAnalyzer.h"
+#include "BlueLineLog.h"
+#include "Analysis/FBlueLineGraphAnalyzer.h"  // Now in BlueLineCore
+#include "Settings/UBlueLineEditorSettings.h"
 #include "EdGraph/EdGraph.h"
 #include "EdGraph/EdGraphNode.h"
 #include "K2Node_Event.h"
@@ -93,20 +95,38 @@ TArray<FBlueLineSmartTagSuggestion> FBlueLineSmartTagAnalyzer::SuggestTagsForNod
     return Suggestions;
 }
 
-void FBlueLineSmartTagAnalyzer::AutoTagGraph(UEdGraph* Graph)
+void FBlueLineSmartTagAnalyzer::AutoTagGraph(UEdGraph* Graph, const TArray<UEdGraphNode*>& SelectedNodes)
 {
     if (!Graph) return;
+    
+    // Guard against re-entrancy (prevents infinite windows if command is triggered rapidly)
+    static bool bIsAutoTagging = false;
+    if (bIsAutoTagging) return;
+    bIsAutoTagging = true;
+    
+    ON_SCOPE_EXIT
+    {
+        bIsAutoTagging = false;
+    };
 
     const FScopedTransaction Transaction(LOCTEXT("AutoTagTransaction", "Auto-Tag Graph"));
     Graph->Modify();
 
+    const bool bHasUserSelection = SelectedNodes.Num() > 0;
+
     // 1. Detect Clusters using the Graph Analyzer
-    TArray<FBlueLineGraphAnalyzer::FNodeCluster> Clusters = FBlueLineGraphAnalyzer::DetectNodeClusters(Graph);
+    TArray<FBlueLineGraphAnalyzer::FNodeCluster> Clusters = FBlueLineGraphAnalyzer::DetectNodeClusters(Graph, SelectedNodes);
 
     for (const auto& Cluster : Clusters)
     {
         // "IQ" Check: Don't tag clusters that are too small or likely trivial
-        if (Cluster.Nodes.Num() < 3) continue; 
+        // BUT: If user explicitly selected nodes, respect their selection regardless of size
+        const UBlueLineEditorSettings* Settings = UBlueLineEditorSettings::Get();
+        int32 MinClusterSizeSelection = Settings ? Settings->MinClusterSizeSelection : 2;
+        int32 MinClusterSizeAuto = Settings ? Settings->MinClusterSizeAuto : 3;
+        
+        if (Cluster.Nodes.Num() < MinClusterSizeSelection) continue;
+        if (!bHasUserSelection && Cluster.Nodes.Num() < MinClusterSizeAuto) continue;
 
         // 2. Analyze Cluster Semantics
         FSemanticContext Context;
@@ -128,32 +148,97 @@ void FBlueLineSmartTagAnalyzer::AutoTagGraph(UEdGraph* Graph)
         }
 
         // 3. Threshold check: Only tag if we are reasonably sure
+        // For user selections, lower the threshold and allow generic comments
+        bool bShouldCreateComment = false;
+        FGameplayTag Tag;
+        FLinearColor Color = FLinearColor::Gray; // Default color if not set
+        
         if (BestSemantic != ENodeSemantic::Unknown && BestWeight > 3.0f)
         {
-            FGameplayTag Tag = MapSemanticToTag(BestSemantic);
-            FLinearColor Color = GetColorForSemantic(BestSemantic);
+            // High confidence semantic match
+            Tag = MapSemanticToTag(BestSemantic);
+            Color = GetColorForSemantic(BestSemantic);
+            bShouldCreateComment = true;
+        }
+        else if (bHasUserSelection && Cluster.Nodes.Num() >= 2)
+        {
+            // User explicitly selected these nodes - create a generic comment box
+            // Use a tag that actually exists in the project
+            Tag = FGameplayTag::RequestGameplayTag(FName("BlueLine.Type.Unknown"), false);
+            if (!Tag.IsValid())
+            {
+                // If BlueLine tags don't exist at all, use a default empty tag
+                Tag = FGameplayTag();
+            }
+            Color = FLinearColor(0.4f, 0.4f, 0.4f); // Gray for generic selection
+            bShouldCreateComment = true;
+        }
 
-            // Calculate bounds with padding
+        if (bShouldCreateComment)
+        {
+            // Calculate bounds with padding - use smaller padding for tighter fit
             FBox2D Bounds = Cluster.Bounds;
-            const float Padding = 60.0f;
-            const float TitleBarHeight = 40.0f;
+            float Padding = Settings ? Settings->CommentBoxPadding : 40.0f;
             
-            // Create the comment node
+            UE_LOG(LogBlueLineCore, Log, TEXT("BlueLine: Creating comment box for cluster with %d nodes"), Cluster.Nodes.Num());
+            UE_LOG(LogBlueLineCore, Log, TEXT("BlueLine: Bounds Min(%f, %f) Max(%f, %f) Size(%f, %f)"), 
+                Bounds.Min.X, Bounds.Min.Y, Bounds.Max.X, Bounds.Max.Y,
+                Bounds.GetSize().X, Bounds.GetSize().Y);
+            
+            // Create the comment node - position it to wrap around the nodes
+            // In UE graph coordinates: X increases right, Y increases down
+            // Bounds.Min is top-left of the leftmost/topmost node
+            // Bounds.Max is bottom-right of the rightmost/bottommost node
             UEdGraphNode_Comment* CommentNode = NewObject<UEdGraphNode_Comment>(Graph);
-            CommentNode->NodePosX = Bounds.Min.X - Padding;
-            CommentNode->NodePosY = Bounds.Min.Y - Padding - TitleBarHeight; 
-            CommentNode->NodeWidth = Bounds.GetSize().X + (Padding * 2.0f);
-            CommentNode->NodeHeight = Bounds.GetSize().Y + (Padding * 2.0f) + TitleBarHeight;
             
-            // Format title with semantic intelligence
-            FString TagName = Tag.ToString();
-            int32 LastDot;
-            if (TagName.FindLastChar('.', LastDot)) TagName = TagName.Mid(LastDot + 1);
-
-            CommentNode->NodeComment = FString::Printf(TEXT("âœ¨ %s Logic"), *TagName);
+            // Position with padding - subtract padding to expand outward
+            int32 CommentX = FMath::FloorToInt(Bounds.Min.X - Padding);
+            int32 CommentY = FMath::FloorToInt(Bounds.Min.Y - Padding);
+            
+            // Size includes the full bounds plus padding on both sides
+            float CommentWidth = Bounds.GetSize().X + (Padding * 2.0f);
+            float CommentHeight = Bounds.GetSize().Y + (Padding * 2.0f);
+            
+            CommentNode->NodePosX = CommentX;
+            CommentNode->NodePosY = CommentY;
+            CommentNode->NodeWidth = CommentWidth;
+            CommentNode->NodeHeight = CommentHeight;
+            
+            UE_LOG(LogBlueLineCore, Log, TEXT("BlueLine: Comment box at (%d, %d) size (%f, %f)"), 
+                CommentX, CommentY, CommentWidth, CommentHeight);
+            UE_LOG(LogBlueLineCore, Log, TEXT("BlueLine: Should cover from (%d, %d) to (%f, %f)"),
+                CommentX, CommentY, CommentX + CommentWidth, CommentY + CommentHeight);
+            
+            // Format title based on whether this was a user selection or auto-detected
+            if (bHasUserSelection && !Tag.IsValid())
+            {
+                // Generic comment for user selection without semantic match
+                CommentNode->NodeComment = FString::Printf(TEXT("📦 Selected Nodes"));
+            }
+            else
+            {
+                // Semantic-based comment
+                FString TagName = Tag.ToString();
+                int32 LastDot;
+                if (TagName.FindLastChar('.', LastDot)) TagName = TagName.Mid(LastDot + 1);
+                
+                if (TagName.IsEmpty() || TagName == "None")
+                {
+                    CommentNode->NodeComment = FString::Printf(TEXT("📦 Selected Nodes"));
+                }
+                else
+                {
+                    CommentNode->NodeComment = FString::Printf(TEXT("✨ %s Logic"), *TagName);
+                }
+            }
+            
             CommentNode->CommentColor = Color;
+            CommentNode->bCommentBubbleVisible = false;
+            CommentNode->bCommentBubblePinned = false;
 
             Graph->AddNode(CommentNode, true, false);
+            CommentNode->PostPlacedNewNode();
+            CommentNode->AllocateDefaultPins();
         }
     }
 }
@@ -287,17 +372,17 @@ FGameplayTag FBlueLineSmartTagAnalyzer::MapSemanticToTag(ENodeSemantic Semantic)
     // If they don't exist, we might want to suggest creating them.
     switch (Semantic)
     {
-        case ENodeSemantic::Movement:   return FGameplayTag::RequestGameplayTag("BlueLine.Type.Movement");
-        case ENodeSemantic::Combat:     return FGameplayTag::RequestGameplayTag("BlueLine.Type.Combat");
-        case ENodeSemantic::UI:         return FGameplayTag::RequestGameplayTag("BlueLine.Type.UI");
-        case ENodeSemantic::Input:      return FGameplayTag::RequestGameplayTag("BlueLine.Type.Input");
-        case ENodeSemantic::Networking: return FGameplayTag::RequestGameplayTag("BlueLine.Type.Networking");
-        case ENodeSemantic::Audio:      return FGameplayTag::RequestGameplayTag("BlueLine.Type.Audio");
-        case ENodeSemantic::Visuals:    return FGameplayTag::RequestGameplayTag("BlueLine.Type.Visuals");
-        case ENodeSemantic::AI:         return FGameplayTag::RequestGameplayTag("BlueLine.Type.AI");
-        case ENodeSemantic::Logic:      return FGameplayTag::RequestGameplayTag("BlueLine.Type.Logic");
-        case ENodeSemantic::Data:       return FGameplayTag::RequestGameplayTag("BlueLine.Type.Data");
-        default:                        return FGameplayTag::RequestGameplayTag("BlueLine.Type.Unknown");
+        case ENodeSemantic::Movement:   return FGameplayTag::RequestGameplayTag(FName("BlueLine.Type.Movement"), false);
+        case ENodeSemantic::Combat:     return FGameplayTag::RequestGameplayTag(FName("BlueLine.Type.Combat"), false);
+        case ENodeSemantic::UI:         return FGameplayTag::RequestGameplayTag(FName("BlueLine.Type.UI"), false);
+        case ENodeSemantic::Input:      return FGameplayTag::RequestGameplayTag(FName("BlueLine.Type.Input"), false);
+        case ENodeSemantic::Networking: return FGameplayTag::RequestGameplayTag(FName("BlueLine.Type.Networking"), false);
+        case ENodeSemantic::Audio:      return FGameplayTag::RequestGameplayTag(FName("BlueLine.Type.Audio"), false);
+        case ENodeSemantic::Visuals:    return FGameplayTag::RequestGameplayTag(FName("BlueLine.Type.Visuals"), false);
+        case ENodeSemantic::AI:         return FGameplayTag::RequestGameplayTag(FName("BlueLine.Type.AI"), false);
+        case ENodeSemantic::Logic:      return FGameplayTag::RequestGameplayTag(FName("BlueLine.Type.Logic"), false);
+        case ENodeSemantic::Data:       return FGameplayTag::RequestGameplayTag(FName("BlueLine.Type.Data"), false);
+        default:                        return FGameplayTag::RequestGameplayTag(FName("BlueLine.Type.Unknown"), false);
     }
 }
 

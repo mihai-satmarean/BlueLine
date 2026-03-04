@@ -1,7 +1,7 @@
 ﻿// Copyright (c) 2026 GregOrigin. All Rights Reserved.
 
 #include "Commands/FBlueLineCommands.h"
-#include "Styles/FBlueLineStyle.h"
+#include "Styles/FBlueLineStyle.h"  // From BlueLineCore
 
 #define LOCTEXT_NAMESPACE "BlueLineGraph"
 
@@ -20,7 +20,7 @@ void FBlueLineCommands::RegisterCommands()
 		"Toggle Wire Style", 
 		"Instantly switches between BlueLine Manhattan wires and Standard Bezier splines.", 
 		EUserInterfaceActionType::Button, 
-		FInputChord(EKeys::F8) // Default: F8
+		FInputChord(EModifierKey::Shift | EModifierKey::Alt, EKeys::W) // FIX: Changed to Shift+Alt+W to avoid conflict with "Possess or Eject Player"
 	);
 
 	UI_COMMAND(
@@ -28,7 +28,7 @@ void FBlueLineCommands::RegisterCommands()
 		"Rigidify Wires",
 		"Inserts Reroute nodes between selected nodes to force 90-degree lines.",
 		EUserInterfaceActionType::Button,
-		FInputChord(EModifierKey::Shift, EKeys::R)
+		FInputChord(EModifierKey::Shift | EModifierKey::Alt, EKeys::R)
 	);
 
 	UI_COMMAND(
@@ -36,8 +36,11 @@ void FBlueLineCommands::RegisterCommands()
 		"Clean Graph",
 		"Analyzes the entire graph and performs an intelligent, non-destructive reorganization.",
 		EUserInterfaceActionType::Button,
-		FInputChord(EModifierKey::Shift, EKeys::C)
+		FInputChord(EModifierKey::Shift | EModifierKey::Alt, EKeys::C)
 	);
+
+	// Note: AutoTagGraph command is defined in BlueLineSmartTags module (Shift+T)
+	// to avoid duplicate command registration conflicts
 }
 
 #undef LOCTEXT_NAMESPACE

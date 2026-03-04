@@ -8,6 +8,8 @@ public class BlueLineSmartTags : ModuleRules
     {
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
+		bUseUnity = false;
+
         PublicDependencyModuleNames.AddRange(
             new string[]
             {
@@ -15,9 +17,12 @@ public class BlueLineSmartTags : ModuleRules
                 "CoreUObject",
                 "Engine",
                 "GameplayTags",
-                "BlueLineCore" // Link to our Runtime Core to read the Theme Data Asset
+                "BlueLineCore" // Runtime Core + Shared Styles
             }
         );
+        
+        // Redundant: BlueLineCore is already a PublicDependency, UBT resolves include paths automatically.
+        // PublicIncludePaths.Add(System.IO.Path.Combine(PluginDirectory, "Source", "BlueLineCore", "Public"));
 
         PrivateDependencyModuleNames.AddRange(
             new string[]
@@ -27,13 +32,12 @@ public class BlueLineSmartTags : ModuleRules
                 "InputCore",
                 "MainFrame",        // Required to bind commands to the editor mainframe
                 "GraphEditor",      // Required for SGraphEditor access
-                "BlueLineGraph",
                 "BlueprintGraph",   // Required for UK2Node access
                 "KismetCompiler",   // Required for some K2Node linkage
                 "EditorFramework", // Required for modern UE5 editor styling
                 "UnrealEd",        // Essential for Editor-only logic
                 "PropertyEditor",  // Required to register IPropertyTypeCustomization
-                "EditorStyle",     // For accessing UE5 fonts and brushes
+                // "EditorStyle", // Removed: deprecated since UE 5.1, code already uses FAppStyle
                 "GameplayTagsEditor", // To interact with existing Tag UI logic
                 "ToolMenus"        // Required for modern context menu extensions
             }

@@ -1,6 +1,7 @@
 ﻿// Copyright (c) 2026 GregOrigin. All Rights Reserved.
 
 #include "UI/FBlueLineSmartTagMenuExtender.h"
+#include "BlueLineLog.h"
 #include "GraphEditorModule.h"
 #include "Modules/ModuleManager.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
@@ -20,7 +21,7 @@ static FDelegateHandle SmartTagMenuExtenderHandle;
 
 void FBlueLineSmartTagMenuExtender::Register()
 {
-    UE_LOG(LogTemp, Log, TEXT("BlueLine: Registering Smart Tag Menu Extender..."));
+    UE_LOG(LogBlueLineCore, Log, TEXT("BlueLine: Registering Smart Tag Menu Extender..."));
     
     FGraphEditorModule& GraphEditorModule = FModuleManager::LoadModuleChecked<FGraphEditorModule>("GraphEditor");
     FGraphEditorModule::FGraphEditorMenuExtender_SelectedNode Delegate =
@@ -57,12 +58,19 @@ void FBlueLineSmartTagMenuExtender::ExecuteSpawnMessyDemoFromMenu()
     TSharedPtr<SWidget> CurrentWidget = FocusedWidget;
 
     int32 Depth = 0;
+    
     while (CurrentWidget.IsValid() && Depth < 50)
     {
-        if (CurrentWidget->GetType().ToString().Contains(TEXT("GraphEditor")))
+        // SAFETY: Verify type string before casting
+        const FName CurrentType = CurrentWidget->GetType();
+        if (CurrentType.ToString().Contains(TEXT("GraphEditor")))
         {
-            GraphEditor = StaticCastSharedPtr<SGraphEditor>(CurrentWidget);
-            break;
+            TSharedPtr<SGraphEditor> Editor = StaticCastSharedPtr<SGraphEditor>(CurrentWidget);
+            if (Editor.IsValid())
+            {
+                GraphEditor = Editor;
+                break;
+            }
         }
         CurrentWidget = CurrentWidget->GetParentWidget();
         Depth++;

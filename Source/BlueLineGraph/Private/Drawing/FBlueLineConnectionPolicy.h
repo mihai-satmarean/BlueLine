@@ -7,7 +7,7 @@
 #include "Data/UBlueLineThemeData.h"
 #include "Layout/SlateRect.h" 
 
-class UBlueLineEditorSettings;
+#include "BlueLineCore/Public/Settings/UBlueLineEditorSettings.h"
 class FSlateWindowElementList;
 
 /**

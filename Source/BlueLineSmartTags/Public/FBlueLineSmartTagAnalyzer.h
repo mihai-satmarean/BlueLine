@@ -47,8 +47,10 @@ public:
     /**
      * The "Maximal IQ" Auto-Tagger.
      * Identifies logical clusters, classifies them, and wraps them in semantic Comment Boxes.
+     * @param Graph - The graph to analyze
+     * @param SelectedNodes - If non-empty, only tag clusters containing these nodes. Otherwise tags all clusters.
      */
-    static void AutoTagGraph(UEdGraph* Graph);
+    static void AutoTagGraph(UEdGraph* Graph, const TArray<UEdGraphNode*>& SelectedNodes = TArray<UEdGraphNode*>());
 
 private:
     /** 

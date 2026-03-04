@@ -110,7 +110,7 @@ void FBlueLineTagCustomization::CustomizeHeader(TSharedRef<IPropertyHandle> Prop
 					.ButtonContent()
 					[
 						SNew(STextBlock)
-						.Text(FText::FromString(TEXT("âœ¨")))
+						.Text(FText::FromString(TEXT("✨")))
 						.ToolTipText(LOCTEXT("SuggestTip", "Smart Suggest Tags"))
 					]
 					.OnGetMenuContent(this, &FBlueLineTagCustomization::GenerateSuggestionMenu)
@@ -128,7 +128,7 @@ void FBlueLineTagCustomization::CustomizeHeader(TSharedRef<IPropertyHandle> Prop
 				+ SHorizontalBox::Slot()
 				.AutoWidth()
 				[
-					ChildrenHandle->CreatePropertyValueWidget()
+					ChildrenHandle.IsValid() ? ChildrenHandle->CreatePropertyValueWidget() : SNullWidget::NullWidget
 				]
 		];
 }
@@ -186,13 +186,19 @@ TSharedRef<SWidget> FBlueLineTagCustomization::GenerateSuggestionMenu() const
 		TSharedPtr<SWidget> FocusedWidget = FSlateApplication::Get().GetKeyboardFocusedWidget();
 		TSharedPtr<SWidget> CurrentWidget = FocusedWidget;
 		int32 Depth = 0;
+		
 		while (CurrentWidget.IsValid() && Depth < 50)
 		{
-			if (CurrentWidget->GetType().ToString().Contains(TEXT("GraphEditor")))
+			// SAFETY: Verify type string before casting
+			const FName CurrentType = CurrentWidget->GetType();
+			if (CurrentType.ToString().Contains(TEXT("GraphEditor")))
 			{
 				TSharedPtr<SGraphEditor> GraphEditor = StaticCastSharedPtr<SGraphEditor>(CurrentWidget);
-				Graph = GraphEditor->GetCurrentGraph();
-				break;
+				if (GraphEditor.IsValid())
+				{
+					Graph = GraphEditor->GetCurrentGraph();
+					break;
+				}
 			}
 			CurrentWidget = CurrentWidget->GetParentWidget();
 			Depth++;
@@ -211,7 +217,12 @@ TSharedRef<SWidget> FBlueLineTagCustomization::GenerateSuggestionMenu() const
 	}
 
 	// Get Suggestions
-	TArray<FBlueLineSmartTagSuggestion> Suggestions = FBlueLineSmartTagAnalyzer::SuggestTagsForNode(Node);
+	TArray<FBlueLineSmartTagSuggestion> Suggestions;
+	if (Node)
+	{
+		Suggestions = FBlueLineSmartTagAnalyzer::SuggestTagsForNode(Node);
+	}
+	
 	if (Graph)
 	{
 		// Merge graph suggestions too

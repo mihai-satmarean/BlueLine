@@ -1,6 +1,7 @@
 ﻿// Copyright (c) 2026 GregOrigin. All Rights Reserved.
 
 #include "BlueLineSmartTagsModule.h"
+#include "BlueLineLog.h"
 #include "Modules/ModuleManager.h"
 #include "PropertyEditorModule.h"
 #include "Data/UBlueLineThemeData.h"
@@ -13,6 +14,7 @@
 #include "EdGraph/EdGraph.h"
 #include "Framework/Commands/UICommandList.h"
 #include "Interfaces/IMainFrameModule.h"
+#include "GameplayTagsManager.h"
 
 #define LOCTEXT_NAMESPACE "BlueLineSmartTags"
 
@@ -23,6 +25,20 @@ void FBlueLineSmartTagsModule::StartupModule()
 	FBlueLineSmartTagMenuExtender::Register();
 	RegisterCommands();
 	RegisterPropertyTypeCustomizations();
+
+	// Register Native Gameplay Tags
+	UGameplayTagsManager& TagManager = UGameplayTagsManager::Get();
+	TagManager.AddNativeGameplayTag(FName("BlueLine.Type.Movement"), TEXT("Movement related nodes"));
+	TagManager.AddNativeGameplayTag(FName("BlueLine.Type.Combat"), TEXT("Combat related nodes"));
+	TagManager.AddNativeGameplayTag(FName("BlueLine.Type.UI"), TEXT("UI related nodes"));
+	TagManager.AddNativeGameplayTag(FName("BlueLine.Type.Input"), TEXT("Input related nodes"));
+	TagManager.AddNativeGameplayTag(FName("BlueLine.Type.Networking"), TEXT("Networking related nodes"));
+	TagManager.AddNativeGameplayTag(FName("BlueLine.Type.Audio"), TEXT("Audio related nodes"));
+	TagManager.AddNativeGameplayTag(FName("BlueLine.Type.Visuals"), TEXT("Visuals related nodes"));
+	TagManager.AddNativeGameplayTag(FName("BlueLine.Type.AI"), TEXT("AI related nodes"));
+	TagManager.AddNativeGameplayTag(FName("BlueLine.Type.Logic"), TEXT("Logic related nodes"));
+	TagManager.AddNativeGameplayTag(FName("BlueLine.Type.Data"), TEXT("Data related nodes"));
+	TagManager.AddNativeGameplayTag(FName("BlueLine.Type.Unknown"), TEXT("Unknown tag category"));
 }
 
 void FBlueLineSmartTagsModule::ShutdownModule()
@@ -58,12 +74,19 @@ void FBlueLineSmartTagsModule::ExecuteAutoTagGraph()
 	TSharedPtr<SWidget> CurrentWidget = FocusedWidget;
 
 	int32 Depth = 0;
+	
 	while (CurrentWidget.IsValid() && Depth < 50)
 	{
-		if (CurrentWidget->GetType().ToString().Contains(TEXT("GraphEditor")))
+		// SAFETY: Verify type string before casting
+		const FName CurrentType = CurrentWidget->GetType();
+		if (CurrentType.ToString().Contains(TEXT("GraphEditor")))
 		{
-			GraphEditor = StaticCastSharedPtr<SGraphEditor>(CurrentWidget);
-			break;
+			TSharedPtr<SGraphEditor> Editor = StaticCastSharedPtr<SGraphEditor>(CurrentWidget);
+			if (Editor.IsValid())
+			{
+				GraphEditor = Editor;
+				break;
+			}
 		}
 		CurrentWidget = CurrentWidget->GetParentWidget();
 		Depth++;
@@ -72,7 +95,28 @@ void FBlueLineSmartTagsModule::ExecuteAutoTagGraph()
 	if (GraphEditor.IsValid())
 	{
 		UEdGraph* Graph = GraphEditor->GetCurrentGraph();
-		FBlueLineSmartTagAnalyzer::AutoTagGraph(Graph);
+		
+		// Get selected nodes - only tag clusters containing selected nodes
+		TArray<UEdGraphNode*> SelectedNodes;
+		const FGraphPanelSelectionSet SelectedGraphNodes = GraphEditor->GetSelectedNodes();
+		for (UObject* SelectedObject : SelectedGraphNodes)
+		{
+			if (UEdGraphNode* Node = Cast<UEdGraphNode>(SelectedObject))
+			{
+				SelectedNodes.Add(Node);
+				UE_LOG(LogBlueLineCore, Log, TEXT("BlueLine: Selected node '%s' at position (%d, %d)"), 
+					*Node->GetNodeTitle(ENodeTitleType::ListView).ToString(), Node->NodePosX, Node->NodePosY);
+			}
+			else
+			{
+				UE_LOG(LogBlueLineCore, Warning, TEXT("BlueLine: Selected object is not a UEdGraphNode: %s"), 
+					*SelectedObject->GetClass()->GetName());
+			}
+		}
+		
+		UE_LOG(LogBlueLineCore, Log, TEXT("BlueLine: Total selected UEdGraphNodes: %d"), SelectedNodes.Num());
+		
+		FBlueLineSmartTagAnalyzer::AutoTagGraph(Graph, SelectedNodes);
 	}
 }
 

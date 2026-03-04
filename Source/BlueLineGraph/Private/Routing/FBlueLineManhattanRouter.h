@@ -21,20 +21,11 @@ public:
 	// Cleanup Entry Point (Public)
 	static int32 CleanupOrphanedRerouteNodes(UEdGraph* Graph);
 
-	struct FConfig
-	{
-		float HorizontalStubLength = 50.0f;
-		float VerticalOffset = 80.0f;
-		float GridSnapSize = 16.0f;
-		bool bSnapToGrid = true;
-	};
-
-	static FConfig Config;
+	static FVector2D GetPinPos(UEdGraphPin* Pin);
 
 private:
 	// Internal Helpers
 	static void CalculateManhattanPath(const FVector2D& Start, const FVector2D& End, TArray<FVector2D>& OutPoints);
-	static FVector2D GetPinPos(UEdGraphPin* Pin);
 	static UK2Node_Knot* CreateRerouteNode(UEdGraph* Graph, const FVector2D& Position, const FEdGraphPinType& PinType);
 	static void BreakSpecificLink(UEdGraphPin* Output, UEdGraphPin* Input);
 };

@@ -9,6 +9,8 @@ public class BlueLineCore : ModuleRules
         // Use Shared PCHs for faster compilation
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
+		bUseUnity = false;
+
         PublicDependencyModuleNames.AddRange(
             new string[]
             {
@@ -16,7 +18,7 @@ public class BlueLineCore : ModuleRules
                 "CoreUObject",
                 "Engine",          // Needed for UDataAsset and Runtime Debug Drawing (HUD)
                 "GameplayTags",
-             //   "GameplayTagsEditor", // Critical: The Theme Data asset relies on FGameplayTag structures,
+                "DeveloperSettings", // Required for UBlueLineEditorSettings
                 "AssetRegistry"
             }
         );
@@ -25,15 +27,12 @@ public class BlueLineCore : ModuleRules
             new string[]
             {
                 "Slate",
-                "SlateCore"
-                
-            }
-        );
-
-        // DynamicallyLoadedModuleNames are rarely needed in modern UE5 setups
-        DynamicallyLoadedModuleNames.AddRange(
-            new string[]
-            {
+                "SlateCore",
+                "Projects",         // Required for IPluginManager (style system)
+                "GraphEditor",      // Required for FGraphSelectionManager in BlueLineContextUtils
+                "BlueprintGraph",   // Required for FBlueLineGraphAnalyzer (K2 nodes)
+                "Json",             // Required for settings export/import
+                "JsonUtilities"     // Required for JSON serialization
             }
         );
     }

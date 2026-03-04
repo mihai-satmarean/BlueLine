@@ -39,12 +39,13 @@ public:
 	TSharedPtr<FUICommandInfo> AutoFormatSelected; // Shift + Q
 	TSharedPtr<FUICommandInfo> RigidifyConnections; // Shift + R
 	TSharedPtr<FUICommandInfo> CleanGraph; // Shift + C
-	TSharedPtr<FUICommandInfo> AutoTagGraph; // Shift + T
+	// Note: AutoTagGraph command is defined in BlueLineSmartTags module to avoid duplication
 
-	/** 
+	/**
 	 * Command: Toggle Wire Style
 	 * Feature: Instantly switch between Manhattan (BlueLine) and Spline (Vanilla) wires.
 	 * Useful for debugging or if the "Circuit Board" look is confusing in a specific messy graph.
+	 * Key: Shift+W (Changed from F8 to avoid conflict with Engine's "Possess or Eject Player")
 	 */
 	TSharedPtr<FUICommandInfo> ToggleWireStyle;
 };

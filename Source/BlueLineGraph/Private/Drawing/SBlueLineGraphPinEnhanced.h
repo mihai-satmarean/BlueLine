@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "SGraphPin.h"
 
-class UBlueLineEditorSettings;
+#include "BlueLineCore/Public/Settings/UBlueLineEditorSettings.h"
 
 /**
  * Enhanced Pin Widget that draws "Manhattan Stubs" and Connection Badges.
@@ -22,6 +22,7 @@ public:
 	virtual int32 OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeometry, const FSlateRect& MyCullingRect, FSlateWindowElementList& OutDrawElements, int32 LayerId, const FWidgetStyle& InWidgetStyle, bool bParentEnabled) const override;
 	virtual void OnMouseEnter(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override;
 	virtual void OnMouseLeave(const FPointerEvent& MouseEvent) override;
+	virtual FReply OnDragDetected(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override;
 
 protected:
 	const UBlueLineEditorSettings* GetSettings() const;

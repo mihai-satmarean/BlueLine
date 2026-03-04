@@ -10,7 +10,7 @@ class FMenuBuilder;
 class UEdGraph;
 class UEdGraphNode;
 class UEdGraphPin;
-struct FGraphContextMenuArguments; // specific UE5 struct if available, else we use signatures
+struct FGraphContextMenuArguments;
 
 class FBlueLineGraphMenuExtender
 {
@@ -30,5 +30,4 @@ private:
 	static void ExecuteStraightenConnection(UEdGraphPin* Pin);
 	static void ExecuteStraightenAll(UEdGraph* Graph);
 	static void ExecuteCleanup(UEdGraph* Graph);
-
 };

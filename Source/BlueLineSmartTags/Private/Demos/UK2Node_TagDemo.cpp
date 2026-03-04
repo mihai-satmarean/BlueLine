@@ -4,11 +4,16 @@
 #include "BlueprintActionDatabaseRegistrar.h"
 #include "BlueprintNodeSpawner.h"
 #include "EdGraphSchema_K2.h"
+#include "KismetCompiler.h"
 
 #define LOCTEXT_NAMESPACE "K2Node_TagDemo"
 
 void UK2Node_TagDemo::AllocateDefaultPins()
 {
+	// FIX: Clear existing pins before creating new ones to prevent duplication
+	// when node is reconstructed (e.g., during compilation or undo/redo)
+	Pins.Reset();
+	
 	CreatePin(EGPD_Input, UEdGraphSchema_K2::PC_Exec, UEdGraphSchema_K2::PN_Execute);
 	CreatePin(EGPD_Output, UEdGraphSchema_K2::PC_Exec, UEdGraphSchema_K2::PN_Then);
 }
@@ -42,6 +47,21 @@ void UK2Node_TagDemo::GetMenuActions(FBlueprintActionDatabaseRegistrar& ActionRe
 		check(NodeSpawner != nullptr);
 		ActionRegistrar.AddBlueprintAction(ActionKey, NodeSpawner);
 	}
+}
+
+void UK2Node_TagDemo::ExpandNode(class FKismetCompilerContext& CompilerContext, UEdGraph* SourceGraph)
+{
+	Super::ExpandNode(CompilerContext, SourceGraph);
+
+	UEdGraphPin* ExecPin = GetExecPin();
+	UEdGraphPin* ThenPin = FindPin(UEdGraphSchema_K2::PN_Then);
+
+	if (ExecPin && ThenPin)
+	{
+		CompilerContext.MovePinLinksToIntermediate(*ExecPin, *ThenPin);
+	}
+
+	BreakAllNodeLinks();
 }
 
 #undef LOCTEXT_NAMESPACE

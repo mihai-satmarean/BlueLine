@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2026 GregOrigin. All Rights Reserved.
 
 #include "Formatting/BlueLineFormatter.h"
-#include "Settings/UBlueLineEditorSettings.h"
+#include "BlueLineCore/Public/Settings/UBlueLineEditorSettings.h"
+#include "Utils/BlueLineContextUtils.h"
 #include "EdGraph/EdGraphNode.h"
 #include "EdGraph/EdGraphPin.h"
 #include "EdGraph/EdGraphSchema.h"
 #include "EdGraphSchema_K2.h"
 #include "EdGraph/EdGraph.h"
 #include "ScopedTransaction.h"
-#include "Framework/Application/SlateApplication.h"
 #include "GraphEditor.h" 
 #include "SGraphPanel.h" 
 
@@ -17,25 +17,8 @@
 
 void FBlueLineFormatter::FormatActiveGraphSelection()
 {
-	TSharedPtr<SWidget> FocusedWidget = FSlateApplication::Get().GetKeyboardFocusedWidget();
-	if (!FocusedWidget.IsValid()) return;
-
-	TSharedPtr<SGraphPanel> GraphPanel;
-	TSharedPtr<SWidget> CurrentWidget = FocusedWidget;
-
-	// Recursive find up to 50 levels
-	int32 Depth = 0;
-	while (CurrentWidget.IsValid() && Depth < 50)
-	{
-		if (CurrentWidget->GetType().ToString().Contains(TEXT("GraphPanel")))
-		{
-			GraphPanel = StaticCastSharedPtr<SGraphPanel>(CurrentWidget);
-			break;
-		}
-		CurrentWidget = CurrentWidget->GetParentWidget();
-		Depth++;
-	}
-
+	// Use centralized context utility for cleaner code
+	TSharedPtr<SGraphPanel> GraphPanel = FBlueLineContextUtils::GetFocusedGraphPanel();
 	if (!GraphPanel.IsValid()) return;
 
 	const FGraphPanelSelectionSet& Selection = GraphPanel->SelectionManager.GetSelectedNodes();
@@ -52,7 +35,16 @@ void FBlueLineFormatter::AutoAlignSelectedNodes(const TSet<UObject*>& SelectedNo
 	FScopedTransaction Transaction(LOCTEXT("BlueLineAutoAlign", "BlueLine: Align Wires"));
 
 	const UBlueLineEditorSettings* Settings = GetDefault<UBlueLineEditorSettings>();
-	const float HorizontalSpacing = Settings ? Settings->FormatterPadding : 80.0f;
+	
+	// Check if auto-format is enabled
+	if (!Settings || !Settings->bEnableAutoFormat)
+	{
+		return;
+	}
+	
+	const float HorizontalSpacing = Settings ? Settings->HorizontalSpacing : 300.0f;
+	const float VerticalSpacing = Settings ? Settings->VerticalSpacing : 120.0f;
+	const float MagnetDist = Settings ? Settings->MagnetEvaluationDistance : 100.0f;
 
 	// Separate Nodes from Comments/Other objects
 	TArray<UEdGraphNode*> LayoutNodes;
@@ -151,7 +143,7 @@ void FBlueLineFormatter::AutoAlignSelectedNodes(const TSet<UObject*>& SelectedNo
 		}
 
 		// Snap resulting position to grid
-		CurrentNode->SnapToGrid(16);
+		CurrentNode->SnapToGrid((Settings ? Settings->GridSnapSize : 16));
 	}
 
 	// 3. Collision Pass (Simple Vertical Separtion)
@@ -166,11 +158,10 @@ void FBlueLineFormatter::AutoAlignSelectedNodes(const TSet<UObject*>& SelectedNo
 				UEdGraphNode* A = LayoutNodes[i];
 				UEdGraphNode* B = LayoutNodes[j];
 
-				// Simple AABB overlap check
-				// Since we don't have exact heights, interpret a standard height of 100 units
-				int32 PaddingX = 20;
-				int32 PaddingY = 20;
-				int32 Width = 200;
+				// Simple AABB overlap check using config constants
+				int32 PaddingX = (Settings ? Settings->CollisionPadding : 20);
+				int32 PaddingY = (Settings ? Settings->CollisionPadding : 20);
+				int32 Width = 150 + 50; // +50 for margin
 				int32 Height = 100;
 
 				bool bOverlapX = FMath::Abs(A->NodePosX - B->NodePosX) < (Width + PaddingX);
@@ -183,7 +174,7 @@ void FBlueLineFormatter::AutoAlignSelectedNodes(const TSet<UObject*>& SelectedNo
 					UEdGraphNode* StaticNode = (NodeToMove == A) ? B : A;
 
 					NodeToMove->NodePosY = StaticNode->NodePosY + Height + PaddingY;
-					NodeToMove->SnapToGrid(16);
+					NodeToMove->SnapToGrid((Settings ? Settings->GridSnapSize : 16));
 					bGraphModified = true;
 				}
 			}
