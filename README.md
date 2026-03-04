@@ -12,7 +12,7 @@
 <br><br><br>
 
 
-**BlueLine** is a lightweight, modular editor productivity & visualization plugin for Unreal Engine 5.7+. At its current state (0.4+), it solves the "Spaghetti Code" problem in Blueprints by enforcing strict, circuit-board-style layouts and semantically coloring data. If you're interested, a more evolved, complex and polished branch is [available on Fab](https://www.fab.com/listings/e63e4083-675d-44ad-a20e-487ceea6ffb1). <br><br>
+**BlueLine** is a lightweight, modular editor productivity & visualization plugin for Unreal Engine 5.7+. At its current state (0.4+), it solves the "Spaghetti Code" problem in Blueprints by enforcing strict, circuit-board-style layouts and semantically coloring data. If you're interested, a more evolved and polished branch is [available on Fab](https://www.fab.com/listings/e63e4083-675d-44ad-a20e-487ceea6ffb1). <br><br>
 
 | <i><b>Comparison | <i><b>GitHub version (0.1+ MIT)           | <i>FAB edition (0.4+ Closed)</b></i>                |
 |:---|:---|:---|
@@ -25,6 +25,7 @@
 | **Smart Tagging** | Included | Included |
 | **Automation tests** | Included | Included |
 | **Toggle wire styles** | n/a | Included | 
+| **Magnetic wire snapping** | n/a | Included |
 | **Extract to Subsystem** | n/a | Included |
 | **Export Blueprint to text** | n/a | Included |
 | **Set / Jump to bookmarks** | n/a | Included | 
@@ -34,6 +35,7 @@
 | **Extensive configuration settings** | n/a | Included |
 | **Theme system: wires and tags** | n/a | Included |
 | **Bookmarks/Snippets persistence (JSON)** | n/a | Included |
+| **Zero runtime overhead** | n/a | Included |
 | **Updates** | n/a | Regular, vetted by Epic |
 | **Quality Assurance** | GitHub Issues | Vetted by Epic, tested by author |
 | **Support** | GitHub Issues | Forum & Email |
