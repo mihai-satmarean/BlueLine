@@ -12,9 +12,15 @@
 <br><br><br>
 
 
-**BlueLine** is a lightweight, modular editor productivity & visualization plugin for Unreal Engine 5.7+. At its current state (0.4+), it solves the "Spaghetti Code" problem in Blueprints by enforcing strict, circuit-board-style layouts and semantically coloring data. If you're interested, a more evolved and polished branch is [available on Fab](https://www.fab.com/listings/e63e4083-675d-44ad-a20e-487ceea6ffb1). <br><br>
+**BlueLine** is a lightweight, modular editor productivity & visualization plugin for Unreal Engine 5.5+. At its current state (0.4+), it solves the "Spaghetti Code" problem in Blueprints by enforcing strict, circuit-board-style layouts and semantically coloring data. Under the hood, it is split into four elaborate modules, with the graph module wiring up formatting, routing, export, extraction, bookmarks, snippets, auto-routing, and wire snapping at startup, plus separate SmartTags and Level modules for semantic tagging and viewport tools. The implemented surface is fairly broad: <br>
 
-| <i><b>Comparison | <i><b>Core GitHub version (0.1+ MIT)           | <i>Full FAB edition (0.3+ Closed)</b></i>                |
+  - Graph editing features are substantive: soft align, rigidify, clean graph, linter, export-to-text, subsystem extraction, bookmarks, and snippets. <br>
+  - SmartTags does heuristic clustering and creates colored comment boxes from semantic guesses; it also registers a native BlueLine.Type.* tag set. <br>
+  - Level tools are also available: the module opens a viewport overlay pie menu, supports pivot center/bottom, cursor-based snapping, and radius-based material scope selection with preview/commit flow. <br><br>
+If you're interested, a more evolved and polished branch is [available on Fab](https://www.fab.com/listings/e63e4083-675d-44ad-a20e-487ceea6ffb1). <br><br>
+
+
+| <i><b>Comparison | <i><b>Core GitHub version (0.1+ MIT)           | <i>[Full FAB](https://www.fab.com/listings/e63e4083-675d-44ad-a20e-487ceea6ffb1) edition (0.3+ Closed)</b></i>                |
 |:---|:---|:---|
 | **Version** | Core | Fully featured + updated |
 | **Distribution** | Source only | Binaries, vetted by Epic |
