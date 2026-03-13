@@ -16,8 +16,12 @@
 
   - Graph editing features are substantive: soft align, rigidify, clean graph, linter, export-to-text, subsystem extraction, bookmarks, and snippets. <br>
   - SmartTags does heuristic clustering and creates colored comment boxes from semantic guesses; it also registers a native BlueLine.Type.* tag set. <br>
-  - Level tools are also available: the module opens a viewport overlay pie menu, supports pivot center/bottom, cursor-based snapping, and radius-based material scope selection with preview/commit flow. <br><br>
-If you're interested, a more evolved and polished branch is [available on Fab](https://www.fab.com/listings/e63e4083-675d-44ad-a20e-487ceea6ffb1). <br><br>
+  - Level tools are also available: the module opens a viewport overlay pie menu, supports pivot center/bottom, cursor-based snapping, and radius-based material scope selection with preview/commit flow.
+
+If you're interested, a more evolved and polished branch is [available on Fab](https://www.fab.com/listings/e63e4083-675d-44ad-a20e-487ceea6ffb1). <br>
+Also, in case you need this adapted or integrated into a production UE5 project: I offer paid Unreal Engine [consulting and implementation](https://gregorigin.com/contact.html). <br><br>
+
+
 
 
 | <i><b>Comparison | <i><b>Core GitHub version (0.1+ MIT)           | <i>[Full FAB](https://www.fab.com/listings/e63e4083-675d-44ad-a20e-487ceea6ffb1) edition (0.3+ Closed)</b></i>                |
