@@ -9,6 +9,8 @@
 [Update video 3](https://www.youtube.com/watch?v=PtDSXUfajH8) <br>
 [Discord support](https://discord.gg/nqYQ5mtmHb) <br>
 
+*[This repository deals with advanced bypasses of standard Unreal C++, Level Editor & Blueprint bottlenecks. 🟢 Currently available for B2B consulting and remote contract/Co-Dev integration (CET Timezone). [Contact form.](https://gregorigin.com/contact.html)]*
+
 <img width="1280" height="720" alt="bluel111" src="https://github.com/user-attachments/assets/c17413bf-5ded-4ce3-98f0-129d0a77e44a" />
 <br><br><br>
 
