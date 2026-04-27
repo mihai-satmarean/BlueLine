@@ -48,4 +48,36 @@ public:
 	 * Key: Shift+W (Changed from F8 to avoid conflict with Engine's "Possess or Eject Player")
 	 */
 	TSharedPtr<FUICommandInfo> ToggleWireStyle;
+
+	// -------------------------------------------------------------------------
+	// Multi-mode formatter (ported from Auto Node Arranger algorithm)
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Format Straight (Shift+X)
+	 * Top-aligns all selected nodes in the exec chain to their primary parent.
+	 * Best for linear event-driven chains.
+	 */
+	TSharedPtr<FUICommandInfo> FormatStraight;
+
+	/**
+	 * Format Center (Shift+V)
+	 * Vertically centers each node on the connecting pin of its parent.
+	 * Best for data-heavy graphs with parallel branches.
+	 */
+	TSharedPtr<FUICommandInfo> FormatCenter;
+
+	/**
+	 * Format Compact (Shift+B)
+	 * Exec nodes keep their Y; data feeder nodes stack vertically per column.
+	 * Best for dense graphs where space is at a premium.
+	 */
+	TSharedPtr<FUICommandInfo> FormatCompact;
+
+	/**
+	 * Select Connected Graph (Shift+F)
+	 * BFS expansion from the current selection via all pin connections.
+	 * Selects everything reachable. Equivalent to ANA's "Select Connected Graph".
+	 */
+	TSharedPtr<FUICommandInfo> SelectConnectedGraph;
 };

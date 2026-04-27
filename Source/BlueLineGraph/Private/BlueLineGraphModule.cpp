@@ -6,6 +6,7 @@
 #include "Drawing/FBlueLineGraphPanelFactory.h"
 #include "Drawing/FBlueLineGraphPinFactory.h"
 #include "Formatting/BlueLineFormatter.h"
+#include "Formatting/FBlueLineMultiModeFormatter.h"
 #include "Styles/FBlueLineStyle.h"  // From BlueLineCore (shared)
 #include "BlueLineCore/Public/Settings/UBlueLineEditorSettings.h"
 
@@ -98,6 +99,26 @@ void FBlueLineGraphModule::RegisterCommands()
 	PluginCommands->MapAction(
 		FBlueLineCommands::Get().CleanGraph,
 		FExecuteAction::CreateStatic(&FBlueLineGraphCleaner::CleanActiveGraph)
+	);
+
+	// Multi-mode formatter (Shift+X / Shift+V / Shift+B)
+	PluginCommands->MapAction(
+		FBlueLineCommands::Get().FormatStraight,
+		FExecuteAction::CreateStatic(&FBlueLineMultiModeFormatter::FormatStraight)
+	);
+	PluginCommands->MapAction(
+		FBlueLineCommands::Get().FormatCenter,
+		FExecuteAction::CreateStatic(&FBlueLineMultiModeFormatter::FormatCenter)
+	);
+	PluginCommands->MapAction(
+		FBlueLineCommands::Get().FormatCompact,
+		FExecuteAction::CreateStatic(&FBlueLineMultiModeFormatter::FormatCompact)
+	);
+
+	// Select Connected Graph (Shift+F)
+	PluginCommands->MapAction(
+		FBlueLineCommands::Get().SelectConnectedGraph,
+		FExecuteAction::CreateStatic(&FBlueLineMultiModeFormatter::SelectConnectedGraph)
 	);
 
 	// Shift+W Toggle (Changed to avoid conflict with Engine's "Possess or Eject Player")
