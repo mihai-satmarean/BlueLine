@@ -27,7 +27,10 @@ void FBlueLineWireSnapper::Disable()
 {
     if (Instance.IsValid())
     {
-        FSlateApplication::Get().UnregisterInputPreProcessor(Instance);
+        if (FSlateApplication::IsInitialized())
+        {
+            FSlateApplication::Get().UnregisterInputPreProcessor(Instance);
+        }
         Instance.Reset();
     }
 }
