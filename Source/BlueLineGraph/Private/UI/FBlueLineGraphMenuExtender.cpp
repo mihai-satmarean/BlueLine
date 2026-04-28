@@ -118,7 +118,7 @@ void FBlueLineGraphMenuExtender::AddGraphMenuEntries(FMenuBuilder& MenuBuilder, 
 
 		MenuBuilder.AddMenuSeparator();
 
-		if (FBlueLineSmartTagCommands::Get().AutoTagGraph.IsValid())
+		if (FBlueLineSmartTagCommands::IsRegistered() && FBlueLineSmartTagCommands::Get().AutoTagGraph.IsValid())
 			MenuBuilder.AddMenuEntry(FBlueLineSmartTagCommands::Get().AutoTagGraph);
 
 		MenuBuilder.AddMenuSeparator();
