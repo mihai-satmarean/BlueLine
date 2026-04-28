@@ -54,13 +54,40 @@ void FBlueLineGraphModule::StartupModule()
 	FBlueLineConnectionInterceptor::Enable();
 	FBlueLineWireSnapper::Enable();
 
+	// Unregister Slate-dependent components BEFORE FSlateApplication is destroyed.
+	// ShutdownModule() is called too late (after Slate teardown begins), so we hook
+	// OnPreShutdown to guarantee a safe unregister window.
+	if (FSlateApplication::IsInitialized())
+	{
+		SlatePreShutdownHandle = FSlateApplication::Get().OnPreShutdown().AddRaw(
+			this, &FBlueLineGraphModule::DisableSlateComponents);
+	}
+
 	UE_LOG(LogBlueLineCore, Log, TEXT("BlueLineGraph: Module Started."));
+}
+
+void FBlueLineGraphModule::DisableSlateComponents()
+{
+	// Remove the pre-shutdown binding (if still registered)
+	if (SlatePreShutdownHandle.IsValid())
+	{
+		if (FSlateApplication::IsInitialized())
+		{
+			FSlateApplication::Get().OnPreShutdown().Remove(SlatePreShutdownHandle);
+		}
+		SlatePreShutdownHandle.Reset();
+	}
+
+	// These are idempotent — safe to call even if already disabled
+	FBlueLineConnectionInterceptor::Disable();
+	FBlueLineWireSnapper::Disable();
 }
 
 void FBlueLineGraphModule::ShutdownModule()
 {
-	FBlueLineConnectionInterceptor::Disable();
-	FBlueLineWireSnapper::Disable();
+	// DisableSlateComponents was already called via OnPreShutdown during normal shutdown.
+	// Call again as a safety net for unusual teardown paths — both are idempotent.
+	DisableSlateComponents();
 
 	// Cleanup Menus
 	FBlueLineGraphMenuExtender::Unregister();

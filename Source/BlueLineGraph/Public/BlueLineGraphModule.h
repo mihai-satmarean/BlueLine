@@ -22,7 +22,15 @@ private:
 	void UninstallGraphPinFactory();
 	void RegisterCommands();
 
+	/** Unregisters Slate-dependent components (WireSnapper, ConnectionInterceptor).
+	 *  Called both from OnPreShutdown (while Slate is still valid) and ShutdownModule
+	 *  as a safety net. Idempotent — safe to call multiple times. */
+	void DisableSlateComponents();
+
 	TSharedPtr<FGraphPanelNodeFactory> BlueLineGraphPanelFactory;
 	TSharedPtr<FBlueLineGraphPinFactory> BlueLinePinFactory;
 	TSharedPtr<FUICommandList> PluginCommands;
+
+	/** Handle for FSlateApplication::OnPreShutdown binding. */
+	FDelegateHandle SlatePreShutdownHandle;
 };

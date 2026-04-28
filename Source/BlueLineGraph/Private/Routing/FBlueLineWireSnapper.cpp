@@ -25,14 +25,20 @@ void FBlueLineWireSnapper::Enable()
 
 void FBlueLineWireSnapper::Disable()
 {
-    if (Instance.IsValid())
+    if (!Instance.IsValid())
     {
-        if (FSlateApplication::IsInitialized())
-        {
-            FSlateApplication::Get().UnregisterInputPreProcessor(Instance);
-        }
-        Instance.Reset();
+        return;
     }
+
+    // Take local ownership so the shared ptr ref count stays > 0 during unregister,
+    // then let LocalInstance go out of scope to trigger the destructor cleanly.
+    TSharedPtr<FBlueLineWireSnapper> LocalInstance = MoveTemp(Instance);
+
+    if (FSlateApplication::IsInitialized())
+    {
+        FSlateApplication::Get().UnregisterInputPreProcessor(LocalInstance);
+    }
+    // LocalInstance destroyed here — after Slate has released its reference
 }
 
 void FBlueLineWireSnapper::Tick(const float DeltaTime, FSlateApplication& SlateApp, TSharedRef<ICursor> Cursor)
