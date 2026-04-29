@@ -28,6 +28,8 @@
 #include "Subsystems/AssetEditorSubsystem.h"
 #include "Editor.h"
 #include "Engine/Blueprint.h"
+#include "EdGraph/EdGraph.h"
+#include "EdGraph/EdGraphNode.h"
 
 // For dialogs
 #include "Framework/Application/SlateApplication.h"
@@ -348,15 +350,15 @@ void FBlueLineGraphModule::SubscribeToGraph(UEdGraph* Graph)
 void FBlueLineGraphModule::OnGraphChanged(const FEdGraphEditAction& Action)
 {
 	// Only trigger on node addition, not on pin/wire changes
-	if (!(Action.Action & GRAPHCHANGE_AddNode)) return;
-	if (Action.Nodes.Num() == 0) return;
+	if (!(Action.Action & EGraphChangeAction::AddedNode)) return;
+	if (!Action.Nodes || Action.Nodes->Num() == 0) return;
 
 	const UBlueLineEditorSettings* Settings = GetDefault<UBlueLineEditorSettings>();
 	if (!Settings || !Settings->bEnableAutoFormat || !Settings->bAutoFormatOnNewNode) return;
 
 	// Collect the new node + its immediate neighbours (1-hop) — Option A
 	TSet<UObject*> NodesToFormat;
-	for (const UEdGraphNode* ConstNode : Action.Nodes)
+	for (const UEdGraphNode* ConstNode : *Action.Nodes)
 	{
 		UEdGraphNode* NewNode = const_cast<UEdGraphNode*>(ConstNode);
 		if (!NewNode) continue;
