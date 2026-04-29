@@ -24,6 +24,10 @@
 #include "Interfaces/IMainFrameModule.h"
 #include "Framework/Commands/UICommandList.h"
 #include "EdGraphUtilities.h"
+#include "HAL/IConsoleManager.h"
+#include "Subsystems/AssetEditorSubsystem.h"
+#include "Editor.h"
+#include "Engine/Blueprint.h"
 
 // For dialogs
 #include "Framework/Application/SlateApplication.h"
@@ -63,6 +67,10 @@ void FBlueLineGraphModule::StartupModule()
 			this, &FBlueLineGraphModule::DisableSlateComponents);
 	}
 
+	RegisterConsoleCommands();
+	RegisterGraphChangeHooks();
+
+	UE_LOG(LogBlueLineCore, Log, TEXT("BlueLine: Auto-routing enabled"));
 	UE_LOG(LogBlueLineCore, Log, TEXT("BlueLineGraph: Module Started."));
 }
 
@@ -88,6 +96,9 @@ void FBlueLineGraphModule::ShutdownModule()
 	// DisableSlateComponents was already called via OnPreShutdown during normal shutdown.
 	// Call again as a safety net for unusual teardown paths — both are idempotent.
 	DisableSlateComponents();
+
+	UnregisterGraphChangeHooks();
+	UnregisterConsoleCommands();
 
 	// Cleanup Menus
 	FBlueLineGraphMenuExtender::Unregister();
@@ -236,6 +247,144 @@ void FBlueLineGraphModule::UninstallGraphPinFactory()
 	{
 		FEdGraphUtilities::UnregisterVisualPinFactory(BlueLinePinFactory);
 		BlueLinePinFactory.Reset();
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Console Commands — callable by LLM via utility/execute_console_command
+// ---------------------------------------------------------------------------
+
+void FBlueLineGraphModule::RegisterConsoleCommands()
+{
+	ConsoleCommands.Add(IConsoleManager::Get().RegisterConsoleCommand(
+		TEXT("BlueLine.FormatGraph"),
+		TEXT("BlueLine: Clean and reorganize the ENTIRE active Blueprint graph. "
+		     "Moves all nodes. Usage: BlueLine.FormatGraph"),
+		FConsoleCommandDelegate::CreateStatic(&FBlueLineGraphCleaner::CleanActiveGraph),
+		ECVF_Default
+	));
+
+	ConsoleCommands.Add(IConsoleManager::Get().RegisterConsoleCommand(
+		TEXT("BlueLine.FormatSelection"),
+		TEXT("BlueLine: Soft-align the SELECTED nodes to their input connections. "
+		     "Does not touch unselected nodes. Usage: BlueLine.FormatSelection"),
+		FConsoleCommandDelegate::CreateStatic(&FBlueLineFormatter::FormatActiveGraphSelection),
+		ECVF_Default
+	));
+
+	UE_LOG(LogBlueLineCore, Log, TEXT("BlueLine: Console commands registered — BlueLine.FormatGraph / BlueLine.FormatSelection"));
+}
+
+void FBlueLineGraphModule::UnregisterConsoleCommands()
+{
+	for (IConsoleObject* Cmd : ConsoleCommands)
+	{
+		IConsoleManager::Get().UnregisterConsoleObject(Cmd);
+	}
+	ConsoleCommands.Empty();
+}
+
+// ---------------------------------------------------------------------------
+// Auto-format on new node — Option A (local subgraph) + Option B (full graph)
+// ---------------------------------------------------------------------------
+
+void FBlueLineGraphModule::RegisterGraphChangeHooks()
+{
+	if (!GEditor) return;
+
+	UAssetEditorSubsystem* AssetEditorSub = GEditor->GetEditorSubsystem<UAssetEditorSubsystem>();
+	if (!AssetEditorSub) return;
+
+	AssetOpenedHandle = AssetEditorSub->OnAssetOpenedInEditor().AddRaw(
+		this, &FBlueLineGraphModule::OnAssetOpenedInEditor);
+}
+
+void FBlueLineGraphModule::UnregisterGraphChangeHooks()
+{
+	if (GEditor)
+	{
+		if (UAssetEditorSubsystem* AssetEditorSub = GEditor->GetEditorSubsystem<UAssetEditorSubsystem>())
+		{
+			if (AssetOpenedHandle.IsValid())
+			{
+				AssetEditorSub->OnAssetOpenedInEditor().Remove(AssetOpenedHandle);
+				AssetOpenedHandle.Reset();
+			}
+		}
+	}
+
+	// Unsubscribe from all graphs
+	for (auto& Pair : GraphChangeHandles)
+	{
+		if (UEdGraph* Graph = Pair.Key.Get())
+		{
+			Graph->RemoveOnGraphChangedHandler(Pair.Value);
+		}
+	}
+	GraphChangeHandles.Empty();
+}
+
+void FBlueLineGraphModule::OnAssetOpenedInEditor(UObject* Asset, IAssetEditorInstance* /*Editor*/)
+{
+	UBlueprint* BP = Cast<UBlueprint>(Asset);
+	if (!BP) return;
+
+	// Subscribe to every graph in this Blueprint (event graphs + function graphs)
+	for (UEdGraph* Graph : BP->UbergraphPages) { SubscribeToGraph(Graph); }
+	for (UEdGraph* Graph : BP->FunctionGraphs)  { SubscribeToGraph(Graph); }
+	for (UEdGraph* Graph : BP->MacroGraphs)     { SubscribeToGraph(Graph); }
+}
+
+void FBlueLineGraphModule::SubscribeToGraph(UEdGraph* Graph)
+{
+	if (!Graph || GraphChangeHandles.Contains(Graph)) return;
+
+	FDelegateHandle Handle = Graph->AddOnGraphChangedHandler(
+		FOnGraphChanged::FDelegate::CreateRaw(this, &FBlueLineGraphModule::OnGraphChanged));
+
+	GraphChangeHandles.Add(TWeakObjectPtr<UEdGraph>(Graph), Handle);
+}
+
+void FBlueLineGraphModule::OnGraphChanged(const FEdGraphEditAction& Action)
+{
+	// Only trigger on node addition, not on pin/wire changes
+	if (!(Action.Action & GRAPHCHANGE_AddNode)) return;
+	if (Action.Nodes.Num() == 0) return;
+
+	const UBlueLineEditorSettings* Settings = GetDefault<UBlueLineEditorSettings>();
+	if (!Settings || !Settings->bEnableAutoFormat || !Settings->bAutoFormatOnNewNode) return;
+
+	// Collect the new node + its immediate neighbours (1-hop) — Option A
+	TSet<UObject*> NodesToFormat;
+	for (const UEdGraphNode* ConstNode : Action.Nodes)
+	{
+		UEdGraphNode* NewNode = const_cast<UEdGraphNode*>(ConstNode);
+		if (!NewNode) continue;
+
+		NodesToFormat.Add(NewNode);
+
+		for (UEdGraphPin* Pin : NewNode->Pins)
+		{
+			for (UEdGraphPin* LinkedPin : Pin->LinkedTo)
+			{
+				if (LinkedPin && LinkedPin->GetOwningNode())
+				{
+					NodesToFormat.Add(LinkedPin->GetOwningNode());
+				}
+			}
+		}
+	}
+
+	// Need at least 2 nodes to meaningfully align
+	if (NodesToFormat.Num() >= 2)
+	{
+		FBlueLineFormatter::AutoAlignSelectedNodes(NodesToFormat);
+	}
+
+	// Option B: after local align, run full Clean Graph pass (off by default)
+	if (Settings->bFullGraphFormatOnNewNode)
+	{
+		FBlueLineGraphCleaner::CleanActiveGraph();
 	}
 }
 

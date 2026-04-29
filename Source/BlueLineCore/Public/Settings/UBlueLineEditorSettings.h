@@ -189,6 +189,21 @@ public:
     /** Enable auto-format command (Shift+F) */
     UPROPERTY(EditAnywhere, Config, Category = "BlueLine|Formatting", meta = (EditCondition = "bEnableBlueLine"))
     bool bEnableAutoFormat = true;
+
+    /** [Option A] When a new node is added, auto-align it and its immediate neighbours (1-hop).
+     *  Only the new node and connected nodes move — the rest of the graph is untouched. */
+    UPROPERTY(EditAnywhere, Config, Category = "BlueLine|Formatting",
+        meta = (EditCondition = "bEnableBlueLine && bEnableAutoFormat",
+                DisplayName = "Auto-Format New Nodes (local subgraph)"))
+    bool bAutoFormatOnNewNode = true;
+
+    /** [Option B] After auto-formatting the new node subgraph, also run a full Clean Graph pass.
+     *  More aggressive — will reposition all nodes in the graph. Safe to disable if you have
+     *  manually positioned nodes you want to preserve. */
+    UPROPERTY(EditAnywhere, Config, Category = "BlueLine|Formatting",
+        meta = (EditCondition = "bEnableBlueLine && bEnableAutoFormat && bAutoFormatOnNewNode",
+                DisplayName = "Full Graph Clean after new node (Option B)"))
+    bool bFullGraphFormatOnNewNode = false;
     
     /** Horizontal spacing between nodes when formatting (pixels) */
     UPROPERTY(EditAnywhere, Config, Category = "BlueLine|Formatting|Spacing",
